@@ -19,13 +19,13 @@ import java.security.MessageDigest;
 
 public class MainActivity extends Activity {
 
-    private static final String url = "https://open.weixin.qq.com/connect/app/qrconnect?appid=wx95a3a4d7c627e07d&bundleid=com.tencent.tmgp.sgame&scope=snsapi_base%2Csnsapi_userinfo%2Csnsapi_friend%2Csnsapi_message&state=weixin";
+    private final static String _mmessage_content = "";
+    private final static int _mmessage_sdkVersion = 621086720;
+    private final static String _mmessage_appPackage = "com.tencent.mm";
 
-    private WebView webView;
-    String _mmessage_content = "";
-    int _mmessage_sdkVersion = 621086720;
-    String _mmessage_appPackage = "com.tencent.mm";
+    private static final String URL = "https://open.weixin.qq.com/connect/app/qrconnect?appid=wx95a3a4d7c627e07d&bundleid=com.tencent.tmgp.sgame&scope=snsapi_base%2Csnsapi_userinfo%2Csnsapi_friend%2Csnsapi_message&state=weixin";
 
+    private WebView mWebView;
 
     @Override
     public void onCreate(Bundle bundle) {
@@ -43,8 +43,8 @@ public class MainActivity extends Activity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.refresh) {
-            if (webView != null) {
-                webView.reload();
+            if (mWebView != null) {
+                mWebView.reload();
             }
             return true;
         }
@@ -53,12 +53,12 @@ public class MainActivity extends Activity {
 
     @SuppressLint("SetJavaScriptEnabled")
     private void initView() {
-        this.webView = (WebView) findViewById(R.id.web_view);
-        WebSettings settings = this.webView.getSettings();
-        this.webView.getSettings().setJavaScriptEnabled(true);
-        this.webView.setWebViewClient(new MyWebViewClient());
+        mWebView = (WebView) findViewById(R.id.web_view);
+        WebSettings settings = mWebView.getSettings();
+        mWebView.getSettings().setJavaScriptEnabled(true);
+        mWebView.setWebViewClient(new MyWebViewClient());
         settings.setUserAgentString("Mozilla/5.0 (Linux; Android 7.0; Mi-4c Build/NRD90M; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/53.0.2785.49 Mobile MQQBrowser/6.2 TBS/043632 Safari/537.36 MicroMessenger/6.6.1.1220(0x26060135) NetType/WIFI Language/zh_CN MicroMessenger/6.6.1.1220(0x26060135) NetType/WIFI Language/zh_CN miniProgram");
-        this.webView.loadUrl(url);
+        mWebView.loadUrl(URL);
     }
 
     public class MyWebViewClient extends WebViewClient {
@@ -66,36 +66,27 @@ public class MainActivity extends Activity {
         }
 
         @Override
-        public boolean shouldOverrideUrlLoading(WebView webView, String str) {
-            boolean z = false;
-            if (!TextUtils.isEmpty(str)) {
-                if (str.startsWith("wx95a3a4d7c627e07d://")) {
-                    try {
+        public boolean shouldOverrideUrlLoading(WebView webView, String url) {
+            try {
+                if (!TextUtils.isEmpty(url)) {
+                    if (url.startsWith("wx95a3a4d7c627e07d://")) {
                         Intent intent = new Intent();
                         intent.setAction(Intent.ACTION_VIEW);
                         intent.setComponent(new ComponentName("com.tencent.tmgp.sgame", "com.tencent.tmgp.sgame.wxapi.WXEntryActivity"));
-                        intent.putExtras(MainActivity.this.generateBundle(str));
-                        if (MainActivity.this.getPackageManager()
-                                .queryIntentActivities(intent, 0).size() > 0) {
-                            z = true;
+                        intent.putExtras(generateBundle(url));
+                        if (isIntentSafe(intent)) {
+                            startActivity(intent);
+                            return true;
                         }
-                        if (z) {
-                            MainActivity.this.startActivity(intent);
+                    } else if (!url.startsWith("http://") || !url.startsWith("https://")) {
+                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                        if (isIntentSafe(intent)) {
+                            startActivity(intent);
+                            return true;
                         }
-                    } catch (Exception ignore) {
                     }
-                    return true;
-                } else if (!str.startsWith("http://") || !str.startsWith("https://")) {
-                    Intent intent2 = new Intent(Intent.ACTION_VIEW, Uri.parse(str));
-                    if (MainActivity.this.getPackageManager()
-                            .queryIntentActivities(intent2, 0).size() > 0) {
-                        z = true;
-                    }
-                    if (z) {
-                        MainActivity.this.startActivity(intent2);
-                    }
-                    return true;
                 }
+            } catch (Exception ignore) {
             }
             return false;
         }
@@ -106,21 +97,26 @@ public class MainActivity extends Activity {
         }
     }
 
-    public Bundle generateBundle(String str) {
+    private boolean isIntentSafe(Intent intent) {
+        return getPackageManager()
+                .queryIntentActivities(intent, 0).size() > 0;
+    }
+
+    private Bundle generateBundle(String req) {
         Bundle bundle = new Bundle();
-        int indexOf = str.indexOf("&state=weixin");
-        String substring = indexOf >= 0 ? str.substring(str.indexOf("code=") + 5, indexOf) : "";
+        int indexOf = req.indexOf("&state=weixin");
+        String code = indexOf >= 0 ? req.substring(req.indexOf("code=") + 5, indexOf) : "";
         bundle.putString("_message_token", null);
-        bundle.putString("_wxapi_sendauth_resp_token", substring);
+        bundle.putString("_wxapi_sendauth_resp_token", code);
         bundle.putString("_mmessage_appPackage", "com.tencent.mm");
         bundle.putString("_wxapi_baseresp_transaction", null);
         bundle.putString("_wxapi_sendauth_resp_lang", "zh_CN");
         bundle.putInt("_wxapi_command_type", 1);
-        bundle.putString("_mmessage_content", this._mmessage_content);
+        bundle.putString("_mmessage_content", _mmessage_content);
         bundle.putString("_wxapi_sendauth_resp_country", "CN");
-        bundle.putByteArray("_mmessage_checksum", generateCheckSum(this._mmessage_content, this._mmessage_sdkVersion, this._mmessage_appPackage));
+        bundle.putByteArray("_mmessage_checksum", generateCheckSum(_mmessage_content, _mmessage_sdkVersion, _mmessage_appPackage));
         bundle.putString("wx_token_key", "com.tencent.mm.openapi.token");
-        bundle.putString("_wxapi_sendauth_resp_url", str);
+        bundle.putString("_wxapi_sendauth_resp_url", req);
         bundle.putInt("_mmessage_sdkVersion", 621086720);
         bundle.putInt("_wxapi_baseresp_errcode", 0);
         bundle.putString("_wxapi_baseresp_errstr", null);
@@ -128,16 +124,16 @@ public class MainActivity extends Activity {
         return bundle;
     }
 
-    private byte[] generateCheckSum(String str, int i, String str2) {
-        String str3;
-        StringBuffer stringBuffer = new StringBuffer();
-        if (str != null) {
-            stringBuffer.append(str);
+    private byte[] generateCheckSum(String content, int sdkVersion, String appPackage) {
+        String result = "";
+        StringBuilder sb = new StringBuilder();
+        if (content != null) {
+            sb.append(content);
         }
-        stringBuffer.append(i);
-        stringBuffer.append(str2);
-        stringBuffer.append("mMcShCsTr");
-        byte[] bytes = stringBuffer.toString().substring(1, 9).getBytes();
+        sb.append(sdkVersion);
+        sb.append(appPackage);
+        sb.append("mMcShCsTr");
+        byte[] bytes = sb.substring(1, 9).getBytes();
         char[] cArr = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
         try {
             MessageDigest instance = MessageDigest.getInstance(MD5Util.TAG);
@@ -151,11 +147,10 @@ public class MainActivity extends Activity {
                 i2 = i3 + 1;
                 cArr2[i3] = cArr[b & 15];
             }
-            str3 = new String(cArr2);
-        } catch (Exception unused) {
-            str3 = null;
+            result = new String(cArr2);
+        } catch (Exception ignore) {
         }
-        return str3.getBytes();
+        return result.getBytes();
     }
 
 }
