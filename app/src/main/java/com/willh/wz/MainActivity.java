@@ -20,7 +20,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
-import android.webkit.RenderProcessGoneDetail;
 import android.webkit.SslErrorHandler;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
@@ -31,7 +30,6 @@ import android.widget.Toast;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.security.MessageDigest;
-import java.security.Permissions;
 
 @SuppressLint("SetJavaScriptEnabled")
 public class MainActivity extends Activity {
@@ -68,8 +66,12 @@ public class MainActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == 1 && grantResults[0] == PackageManager.PERMISSION_DENIED) {
-            Toast.makeText(this, "二维码写入失败", Toast.LENGTH_SHORT).show();
+        if (requestCode == 1) {
+            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                startShare();
+            } else {
+                Toast.makeText(this, "二维码写入失败", Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
@@ -90,20 +92,15 @@ public class MainActivity extends Activity {
             }
             return true;
         } else if (item.getItemId() == R.id.share) {
-            startShare();
+            if (checkPermission()) {
+                startShare();
+            }
             return true;
         }
         return super.onOptionsItemSelected(item);
     }
 
     private void startShare() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
-            if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
-                    PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
-                return;
-            }
-        }
         try {
             if (mQrBitmap != null && !mQrBitmap.isRecycled()) {
                 File img = saveBitmapFile(mQrBitmap, "qr.jpg");
@@ -111,15 +108,36 @@ public class MainActivity extends Activity {
                     shareOneFile(img.getAbsolutePath());
             }
         } catch (Exception ignore) {
+            Toast.makeText(this, "分享二维码失败", Toast.LENGTH_SHORT).show();
         }
     }
 
+    private boolean checkPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
+                    PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+                return false;
+            }
+        }
+        return true;
+    }
+
     private void initView() {
-        WebView.setWebContentsDebuggingEnabled(true);
+//        WebView.setWebContentsDebuggingEnabled(true);
         setStatusBarColor();
         setContentView(R.layout.activity_main);
         mWebView = (WebView) findViewById(R.id.web_view);
         WebSettings settings = mWebView.getSettings();
+        //  设置缓存规则
+        mWebView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
+        mWebView.getSettings().setDomStorageEnabled(true);
+        String appCachePath = getApplicationContext().getCacheDir()
+                .getAbsolutePath() + "/BrowserCache/";
+        mWebView.getSettings().setAppCachePath(appCachePath);
+        mWebView.getSettings().setAllowFileAccess(true);
+        mWebView.getSettings().setAppCacheEnabled(true);
+
         mWebView.getSettings().setJavaScriptEnabled(true);
         mWebView.setWebViewClient(new MyWebViewClient());
         mWebView.setWebChromeClient(new MyWebChromeClient());
@@ -149,8 +167,6 @@ public class MainActivity extends Activity {
     }
 
     public class MyWebViewClient extends WebViewClient {
-        MyWebViewClient() {
-        }
 
         @Override
         public void onPageStarted(WebView view, String url, Bitmap favicon) {
@@ -205,8 +221,8 @@ public class MainActivity extends Activity {
         }
     }
 
-    private final static String JS_MODIFY = "javascript:function modifyPage(){var cancel=document.getElementById('js_cancel_login');cancel.style.display='none';document.getElementsByClassName('auth_rights_tips')[0].innerHTML='扫码只用于授权，不会登录你的微信'};modifyPage();";
-    private final static String JS_FINISH = "javascript:function getBase64Image(img,width,height){var canvas=document.createElement(\"canvas\");canvas.width=width?width:img.width;canvas.height=height?height:img.height;var ctx=canvas.getContext(\"2d\");ctx.drawImage(img,0,0,canvas.width,canvas.height);var dataURL=canvas.toDataURL();return dataURL};function modifyPage(){var cancel=document.getElementById('js_cancel_login');cancel.style.display='none';document.getElementsByClassName('auth_rights_tips')[0].innerHTML='扫码只用于授权，不会登录你的微信'}function loadImage(){modifyPage();var img=new Image();img.src=document.getElementsByClassName('auth_qrcode')[0].src;if(img.complete){android.loadQrcodeResult(getBase64Image(img));return}img.onload=function(){console.loadQrcodeResult(getBase64Image(img))}};jQuery(document).ready(function(){});loadImage();";
+    private final static String JS_MODIFY = "javascript:function modifyPage(){var cancel=document.getElementById('js_cancel_login');cancel.style.display='none';document.getElementsByClassName('auth_rights_tips')[0].innerHTML='扫码只用于授权，不会登录你的微信<br>版本:" + BuildConfig.VERSION_NAME + "'};modifyPage();";
+    private final static String JS_FINISH = "javascript:function getBase64Image(img,width,height){var canvas=document.createElement(\"canvas\");canvas.width=width?width:img.width;canvas.height=height?height:img.height;var ctx=canvas.getContext(\"2d\");ctx.drawImage(img,0,0,canvas.width,canvas.height);var dataURL=canvas.toDataURL();return dataURL};function loadImage(){modifyPage();var img=new Image();img.src=document.getElementsByClassName('auth_qrcode')[0].src;if(img.complete){android.loadQrcodeResult(getBase64Image(img));return}img.onload=function(){console.loadQrcodeResult(getBase64Image(img))}};jQuery(document).ready(function(){});loadImage();";
 
     private boolean isIntentSafe(Intent intent) {
         return getPackageManager()
@@ -235,6 +251,8 @@ public class MainActivity extends Activity {
         return bundle;
     }
 
+    private final char[] HEX = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+
     private byte[] generateCheckSum(String content, int sdkVersion, String appPackage) {
         String result = "";
         StringBuilder sb = new StringBuilder();
@@ -245,20 +263,17 @@ public class MainActivity extends Activity {
         sb.append(appPackage);
         sb.append("mMcShCsTr");
         byte[] bytes = sb.substring(1, 9).getBytes();
-        char[] cArr = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
         try {
             MessageDigest instance = MessageDigest.getInstance(MD5Util.TAG);
             instance.update(bytes);
             byte[] digest = instance.digest();
-            char[] cArr2 = new char[digest.length * 2];
-            int i2 = 0;
+            char[] hex = new char[digest.length * 2];
+            int index = 0;
             for (byte b : digest) {
-                int i3 = i2 + 1;
-                cArr2[i2] = cArr[(b >>> 4) & 15];
-                i2 = i3 + 1;
-                cArr2[i3] = cArr[b & 15];
+                hex[index++] = HEX[(b >>> 4) & 15];
+                hex[index++] = HEX[b & 15];
             }
-            result = new String(cArr2);
+            result = new String(hex);
         } catch (Exception ignore) {
         }
         return result.getBytes();
