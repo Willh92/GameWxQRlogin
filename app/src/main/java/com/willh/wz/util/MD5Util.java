@@ -1,4 +1,4 @@
-package com.willh.wz;
+package com.willh.wz.util;
 
 import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;

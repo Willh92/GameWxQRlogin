@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">扫码登录</string>
+    <string name="common_confirm">确认</string>
+    <string name="common_cancel">取消</string>
+    <string name="help_dialog_title">扫码使用说明\n(%s)</string>
+    <string name="help_known">知道啦</string>
 </resources>
