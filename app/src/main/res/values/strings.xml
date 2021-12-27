@@ -4,5 +4,5 @@
     <string name="common_cancel">取消</string>
     <string name="help_dialog_title">扫码使用说明\n(%s)</string>
     <string name="help_known">知道啦</string>
-    <string name="update_game">更新列表</string>
+    <string name="update_game">更新游戏列表</string>
 </resources>

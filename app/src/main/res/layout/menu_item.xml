@@ -2,8 +2,7 @@
 <TextView xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/tv_title"
     android:layout_width="@dimen/menu_width"
-    android:padding="12dp"
     android:layout_height="@dimen/menu_height"
-    android:textColor="#000"
     android:gravity="center"
+    android:textColor="#000"
     android:textSize="17sp" />
