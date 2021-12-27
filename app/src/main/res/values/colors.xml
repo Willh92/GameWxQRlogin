@@ -3,4 +3,5 @@
     <color name="colorPrimary">#4FD0C6</color>
     <color name="text_black">#333333</color>
     <color name="devide_color">#ffe3e1e1</color>
+    <color name="transparent">#00000000</color>
 </resources>

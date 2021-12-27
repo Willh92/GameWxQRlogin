@@ -12,6 +12,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.net.http.SslError;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -35,8 +36,9 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import com.willh.wz.bean.GameInfo;
-import com.willh.wz.bean.Games;
+import com.willh.wz.bean.MenuList;
 import com.willh.wz.fragment.MsgDialogFragment;
+import com.willh.wz.fragment.ProgressDialogFragment;
 import com.willh.wz.menu.MenuAdapter;
 import com.willh.wz.pop.CommonPopupWindow;
 import com.willh.wz.util.DimenUtil;
@@ -47,13 +49,11 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.security.MessageDigest;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 
 @SuppressLint("SetJavaScriptEnabled")
-public class MainActivity extends Activity implements AdapterView.OnItemClickListener {
+public class MainActivity extends Activity implements AdapterView.OnItemClickListener, MenuUtil.MenuTaskCallback {
 
     private final static String _mmessage_content = "";
     private final static int _mmessage_sdkVersion = 621086720;
@@ -78,6 +78,8 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
 
     private Map<String, GameInfo> mGameList;
 
+    private MenuUtil.MenuTask mMenuTask;
+
     @Override
     public void onCreate(Bundle bundle) {
         super.onCreate(bundle);
@@ -94,6 +96,9 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
         if (mQrBitmap != null) {
             mQrBitmap.recycle();
             mQrBitmap = null;
+        }
+        if (mMenuTask != null) {
+            mMenuTask.cancel(false);
         }
     }
 
@@ -169,7 +174,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
     }
 
     private void initView() {
-        WebView.setWebContentsDebuggingEnabled(true);
+        WebView.setWebContentsDebuggingEnabled(false);
         setStatusBarColor();
         setContentView(R.layout.activity_main);
         mWebView = (WebView) findViewById(R.id.web_view);
@@ -190,7 +195,8 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
         settings.setUserAgentString("Mozilla/5.0 (Linux; Android 7.0; Mi-4c Build/NRD90M; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/53.0.2785.49 Mobile MQQBrowser/6.2 TBS/043632 Safari/537.36 MicroMessenger/6.6.1.1220(0x26060135) NetType/WIFI Language/zh_CN MicroMessenger/6.6.1.1220(0x26060135) NetType/WIFI Language/zh_CN miniProgram");
         mConfig = getSharedPreferences("config", Context.MODE_PRIVATE);
 
-        mGameList = MenuUtil.getMenuFromAssets(this);
+        MenuList menuList = MenuUtil.getMenu(this);
+        mGameList = menuList.menu;
         selectGame(mGameList.get(mConfig.getString(CONFIG_GAME, "王者荣耀")));
 //        showMsgDialog(getString(R.string.help_dialog_title, mCurrentGame.name), mCurrentGame.help);
     }
@@ -203,7 +209,11 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
 
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-        selectGame(mMenuAdapter.getItem(position));
+        if (position == 0) {
+            updateMenu();
+        } else if (position <= mMenuAdapter.getCount()) {
+            selectGame(mMenuAdapter.getItem(position - 1));
+        }
         if (mMenuPopupWindow != null) {
             mMenuPopupWindow.dismiss();
         }
@@ -449,6 +459,8 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
         if (mMenuPopupWindow == null) {
             ListView listView = (ListView) LayoutInflater.from(this).inflate(R.layout.menu_list, null);
             mMenuAdapter = new MenuAdapter(this, new ArrayList<>(mGameList.values()));
+            View headView = LayoutInflater.from(this).inflate(R.layout.menu_head, null);
+            listView.addHeaderView(headView);
             listView.setAdapter(mMenuAdapter);
             listView.setOnItemClickListener(this);
             mMenuPopupWindow = new CommonPopupWindow.Builder(this)
@@ -472,11 +484,11 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
     }
 
     private void updateMenu() {
-        if (mMenuAdapter != null) {
-            mMenuAdapter.getItems().clear();
-            mMenuAdapter.getItems().addAll(mGameList.values());
-            mMenuAdapter.notifyDataSetChanged();
+        if (mMenuTask != null) {
+            mMenuTask.cancel(false);
         }
+        mMenuTask = new MenuUtil.MenuTask(this);
+        mMenuTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, this);
     }
 
     private MsgDialogFragment mHelpDialog;
@@ -488,6 +500,53 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
                     .setRightText(getString(R.string.help_known));
         }
         mHelpDialog.setTitleText(title).setMsgText(msg).show(getFragmentManager(), "MsgDialogFragment");
+    }
+
+    private ProgressDialogFragment mProgressDialog;
+
+    public void showProgressDialog() {
+        if (getDialog() != null) {
+            getDialog().showAllowingStateLoss(getFragmentManager(), "dialog");
+        }
+    }
+
+    public void dismissProgressDialog() {
+        if (getDialog() != null) {
+            try {
+                getDialog().dismissAllowingStateLoss();
+            } catch (Exception ignore) {
+            }
+        }
+    }
+
+    public ProgressDialogFragment getDialog() {
+        if (mProgressDialog == null) {
+            mProgressDialog = new ProgressDialogFragment();
+        }
+        return mProgressDialog;
+    }
+
+    @Override
+    public void onMenuTaskPreExecute() {
+        showProgressDialog();
+    }
+
+    @Override
+    public void onMenuTaskCancelled() {
+    }
+
+    @Override
+    public void onMenuTaskExecuted(MenuList menuList) {
+        if (menuList != null) {
+            mGameList = menuList.menu;
+            if (mMenuAdapter != null) {
+                mMenuAdapter.getItems().clear();
+                mMenuAdapter.getItems().addAll(mGameList.values());
+                mMenuAdapter.notifyDataSetChanged();
+                selectGame(null);
+            }
+        }
+        dismissProgressDialog();
     }
 
 }
