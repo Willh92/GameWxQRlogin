@@ -1,0 +1,62 @@
+{
+  "version": 2,
+  "defaultHelp": "1.打开要登录的游戏，注销当前登录。\\n2.登录页如有用户协议等，勾选后游戏切换后台\\n3.切换到扫码APP，出现二维码后点击分享给对方\\n4.在扫码APP内等待对方扫码授权就可以自动跳转并登录游戏。\\n5.如果跳转后没有自动登录，请杀掉游戏进程，重新打开游戏查看。\\n6.如果还是没登录，请仔细检查步骤，步骤没错，那就是工具失效了。",
+  "game": [
+    {
+      "name": "王者荣耀",
+      "appId": "wx95a3a4d7c627e07d",
+      "bundleId": "com.tencent.tmgp.sgame",
+      "pkg": "",
+      "cls": "",
+      "help": ""
+    },
+    {
+      "name": "英雄联盟",
+      "appId": "wx5a611599efa17e78",
+      "bundleId": "com.tencent.lolm",
+      "pkg": "",
+      "cls": "",
+      "help": "1.打开要登录的游戏，注销当前登录，杀掉游戏进程\\n2.切换到扫码APP，出现二维码后点击分享给对方。\\n3.在扫码APP内等待对方扫码授权，成功授权后会自动跳转。\\n4.成功跳转后，等待游戏加载到登录页面，稍等片刻再次杀掉游戏进程，重新打开游戏即可自动登录。\\n5.如果还是没登录，请仔细检查步骤，步骤没错，那就是工具失效了。\""
+    },
+    {
+      "name": "和平精英",
+      "appId": "wxc4c0253df149f02d",
+      "bundleId": "com.tencent.tmgp.pubgmhd",
+      "pkg": "",
+      "cls": "",
+      "help": ""
+    },
+    {
+      "name": "穿越火线",
+      "appId": "wx58164a91f1821369",
+      "bundleId": "com.tencent.tmgp.cf",
+      "pkg": "",
+      "cls": "",
+      "help": ""
+    },
+    {
+      "name": "欢乐麻将",
+      "appId": "wx3bef52104e238bff",
+      "bundleId": "com.qqgame.happymj",
+      "pkg": "",
+      "cls": "",
+      "help": ""
+    },
+    {
+      "name": "欢乐斗地主",
+      "appId": "wx76fc280041c16519",
+      "bundleId": "com.qqgame.hlddz",
+      "pkg": "",
+      "cls": "",
+      "help": ""
+    },
+    {
+      "name": "QQ飞车",
+      "appId": "wx360b06d575d20cc3",
+      "bundleId": "com.tencent.tmgp.speedmobile",
+      "pkg": "",
+      "cls": "",
+      "help": ""
+    }
+  ]
+}

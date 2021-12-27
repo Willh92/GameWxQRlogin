@@ -17,8 +17,12 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.text.TextUtils;
 import android.util.Base64;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.SslErrorHandler;
@@ -26,23 +30,30 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.AdapterView;
+import android.widget.ListView;
 import android.widget.Toast;
 
 import com.willh.wz.bean.GameInfo;
 import com.willh.wz.bean.Games;
 import com.willh.wz.fragment.MsgDialogFragment;
+import com.willh.wz.menu.MenuAdapter;
+import com.willh.wz.pop.CommonPopupWindow;
+import com.willh.wz.util.DimenUtil;
 import com.willh.wz.util.MD5Util;
+import com.willh.wz.util.MenuUtil;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 @SuppressLint("SetJavaScriptEnabled")
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements AdapterView.OnItemClickListener {
 
     private final static String _mmessage_content = "";
     private final static int _mmessage_sdkVersion = 621086720;
@@ -54,6 +65,9 @@ public class MainActivity extends Activity {
             "appid=%s&bundleid=%s" +
             "&scope=snsapi_base,snsapi_userinfo,snsapi_friend,snsapi_message&state=weixin";
 
+    private Menu mMenu;
+    private CommonPopupWindow mMenuPopupWindow;
+    private MenuAdapter mMenuAdapter;
     private MenuItem mShareMenu;
     private WebView mWebView;
     private Bitmap mQrBitmap;
@@ -62,7 +76,7 @@ public class MainActivity extends Activity {
     private GameInfo mCurrentGame;
     private String mCurrentUrl;
 
-    private final Map<String, GameInfo> GAMES = Collections.unmodifiableMap(new Games());
+    private Map<String, GameInfo> mGameList;
 
     @Override
     public void onCreate(Bundle bundle) {
@@ -100,10 +114,7 @@ public class MainActivity extends Activity {
         getMenuInflater().inflate(R.menu.main, menu);
         mShareMenu = (MenuItem) menu.findItem(R.id.share);
         mShareMenu.setVisible(false);
-        Set<String> titles = GAMES.keySet();
-        for (String title : titles) {
-            menu.add(title);
-        }
+        mMenu = menu;
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -124,8 +135,10 @@ public class MainActivity extends Activity {
         } else if (item.getItemId() == R.id.help) {
             if (mCurrentGame != null)
                 showMsgDialog(getString(R.string.help_dialog_title, mCurrentGame.name), mCurrentGame.help);
+        } else if (item.getItemId() == R.id.more) {
+            showGameMenu();
         } else {
-            GameInfo gameInfo = GAMES.get(item.getTitle().toString());
+            GameInfo gameInfo = mGameList.get(item.getTitle().toString());
             if (gameInfo != null)
                 selectGame(gameInfo);
         }
@@ -176,7 +189,9 @@ public class MainActivity extends Activity {
         mWebView.addJavascriptInterface(new JavaScriptInterface(), "android");
         settings.setUserAgentString("Mozilla/5.0 (Linux; Android 7.0; Mi-4c Build/NRD90M; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/53.0.2785.49 Mobile MQQBrowser/6.2 TBS/043632 Safari/537.36 MicroMessenger/6.6.1.1220(0x26060135) NetType/WIFI Language/zh_CN MicroMessenger/6.6.1.1220(0x26060135) NetType/WIFI Language/zh_CN miniProgram");
         mConfig = getSharedPreferences("config", Context.MODE_PRIVATE);
-        selectGame(GAMES.get(mConfig.getString(CONFIG_GAME, "王者荣耀")));
+
+        mGameList = MenuUtil.getMenuFromAssets(this);
+        selectGame(mGameList.get(mConfig.getString(CONFIG_GAME, "王者荣耀")));
 //        showMsgDialog(getString(R.string.help_dialog_title, mCurrentGame.name), mCurrentGame.help);
     }
 
@@ -184,6 +199,14 @@ public class MainActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
         getWindow().setStatusBarColor(getResources().getColor(R.color.colorPrimary));
+    }
+
+    @Override
+    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+        selectGame(mMenuAdapter.getItem(position));
+        if (mMenuPopupWindow != null) {
+            mMenuPopupWindow.dismiss();
+        }
     }
 
     public class MyWebChromeClient extends WebChromeClient {
@@ -377,13 +400,15 @@ public class MainActivity extends Activity {
 
     private void selectGame(GameInfo gameInfo) {
         if (gameInfo == null) {
-            gameInfo = GAMES.get(GAMES.keySet().iterator().next());
+            gameInfo = mGameList.get(mGameList.keySet().iterator().next());
         }
-        mCurrentGame = gameInfo;
-        mCurrentUrl = String.format(Locale.getDefault(), URL, mCurrentGame.appId, mCurrentGame.bundleId);
-        mWebView.clearHistory();
-        mWebView.loadUrl(mCurrentUrl);
-        mConfig.edit().putString(CONFIG_GAME, gameInfo.name).apply();
+        if (gameInfo != null) {
+            mCurrentGame = gameInfo;
+            mCurrentUrl = String.format(Locale.getDefault(), URL, mCurrentGame.appId, mCurrentGame.bundleId);
+            mWebView.clearHistory();
+            mWebView.loadUrl(mCurrentUrl);
+            mConfig.edit().putString(CONFIG_GAME, gameInfo.name).apply();
+        }
     }
 
     private void shareOneFile(String filePath) {
@@ -417,6 +442,41 @@ public class MainActivity extends Activity {
             return null;
         }
         return galleryPath;
+    }
+
+
+    private void showGameMenu() {
+        if (mMenuPopupWindow == null) {
+            ListView listView = (ListView) LayoutInflater.from(this).inflate(R.layout.menu_list, null);
+            mMenuAdapter = new MenuAdapter(this, new ArrayList<>(mGameList.values()));
+            listView.setAdapter(mMenuAdapter);
+            listView.setOnItemClickListener(this);
+            mMenuPopupWindow = new CommonPopupWindow.Builder(this)
+                    .setView(listView)
+                    .setOutsideTouchable(true)
+                    .setWidthAndHeight(getResources().getDimensionPixelSize(R.dimen.menu_width)
+                            , ViewGroup.LayoutParams.WRAP_CONTENT)
+                    .setAnimationStyle(R.style.menu_style)
+                    .create();
+        }
+        if (mMenuPopupWindow.isShowing())
+            return;
+        Window window = getWindow();
+        if (getWindow() != null) {
+            WindowManager.LayoutParams params = window.getAttributes();
+            window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            params.alpha = 0.8f;
+            window.setAttributes(params);
+        }
+        mMenuPopupWindow.showAsDropDown(findViewById(R.id.more), 0, DimenUtil.Dp2Px(this, -40));
+    }
+
+    private void updateMenu() {
+        if (mMenuAdapter != null) {
+            mMenuAdapter.getItems().clear();
+            mMenuAdapter.getItems().addAll(mGameList.values());
+            mMenuAdapter.notifyDataSetChanged();
+        }
     }
 
     private MsgDialogFragment mHelpDialog;
