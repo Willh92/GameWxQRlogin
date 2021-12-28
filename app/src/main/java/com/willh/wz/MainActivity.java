@@ -36,6 +36,7 @@ import android.webkit.WebViewClient;
 import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -511,6 +512,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
             params.alpha = 0.8f;
             window.setAttributes(params);
         }
+        mMenuPopupWindow.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         mMenuPopupWindow.showAsDropDown(findViewById(R.id.more), 0, DimenUtil.Dp2Px(this, -40));
     }
 
