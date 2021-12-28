@@ -17,9 +17,11 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.text.Editable;
+import android.text.InputFilter;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Base64;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -42,6 +44,7 @@ import android.widget.Toast;
 
 import com.willh.wz.bean.GameInfo;
 import com.willh.wz.bean.MenuList;
+import com.willh.wz.filter.NameFilter;
 import com.willh.wz.fragment.MsgDialogFragment;
 import com.willh.wz.fragment.ProgressDialogFragment;
 import com.willh.wz.menu.MenuAdapter;
@@ -54,6 +57,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Locale;
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -475,6 +479,9 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
                 }
             });
             mSearchView = view.findViewById(R.id.et_search);
+            InputFilter[] filters = Arrays.copyOf(mSearchView.getFilters(), mSearchView.getFilters().length + 1);
+            filters[filters.length - 1] = new NameFilter();
+            mSearchView.setFilters(filters);
             mSearchView.addTextChangedListener(new TextWatcher() {
                 @Override
                 public void beforeTextChanged(CharSequence s, int start, int count, int after) {
@@ -493,6 +500,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
                     }
                 }
             });
+            mSearchView.setOnEditorActionListener((v, actionId, event) -> true);
             listView.setAdapter(mMenuAdapter);
             listView.setOnItemClickListener(this);
             mMenuPopupWindow = new CommonPopupWindow.Builder(this)
