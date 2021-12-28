@@ -7,4 +7,5 @@
 [查看游戏列表](/games/gameList.json?raw=true)
 
 <br>
-<img src="/Screenshot.jpg?raw=true" width="200">
+<img src="/screenshot/Screenshot1.jpeg?raw=true" width="200">
+<img src="/screenshot/Screenshot2.jpeg?raw=true" width="200">
