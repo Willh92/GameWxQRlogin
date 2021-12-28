@@ -67,7 +67,7 @@ public class MenuUtil {
                 String help = g.optString("help");
                 String py = g.optString("py", "");
                 String icon = g.optString("icon", "");
-                GameInfo gameInfo = new GameInfo(name, appId, bundleId, defaultHelp, py, icon);
+                GameInfo gameInfo = new GameInfo(name, appId, bundleId, defaultHelp, icon, py);
                 if (!TextUtils.isEmpty(pkg)) {
                     gameInfo.pkg = pkg;
                 }

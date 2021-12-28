@@ -36,6 +36,7 @@ import android.webkit.WebViewClient;
 import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.willh.wz.bean.GameInfo;
@@ -68,10 +69,10 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
             "appid=%s&bundleid=%s" +
             "&scope=snsapi_base,snsapi_userinfo,snsapi_friend,snsapi_message&state=weixin";
 
-    private Menu mMenu;
     private CommonPopupWindow mMenuPopupWindow;
     private MenuAdapter mMenuAdapter;
     private EditText mSearchView;
+    private TextView mUpdateView;
     private MenuItem mShareMenu;
     private WebView mWebView;
     private Bitmap mQrBitmap;
@@ -152,7 +153,6 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
         getMenuInflater().inflate(R.menu.main, menu);
         mShareMenu = (MenuItem) menu.findItem(R.id.share);
         mShareMenu.setVisible(false);
-        mMenu = menu;
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -214,10 +214,8 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
 
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-        if (position == 0) {
-            updateMenu(mMenuList.version);
-        } else if (position <= mMenuAdapter.getCount()) {
-            selectGame(mMenuAdapter.getItem(position - 1));
+        if (position >= 0 && position < mMenuAdapter.getCount()) {
+            selectGame(mMenuAdapter.getItem(position));
         }
         if (mMenuPopupWindow != null) {
             mMenuPopupWindow.dismiss();
@@ -464,16 +462,18 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
         if (mMenuList == null)
             return;
         if (mMenuPopupWindow == null) {
-            ListView listView = (ListView) LayoutInflater.from(this).inflate(R.layout.menu_list, null);
+            View view = LayoutInflater.from(this).inflate(R.layout.menu_list, null);
+            ListView listView = (ListView) view.findViewById(R.id.list);
             mMenuAdapter = new MenuAdapter(this, new ArrayList<>(mMenuList.menu.values()));
-            View headView = LayoutInflater.from(this).inflate(R.layout.menu_head, null);
-            headView.findViewById(R.id.tv_update).setOnClickListener(v -> {
+            mUpdateView = view.findViewById(R.id.tv_update);
+            mUpdateView.setText(getString(R.string.update_game, mMenuList.menu.size()));
+            mUpdateView.setOnClickListener(v -> {
                 updateMenu(mMenuList.version);
                 if (mMenuPopupWindow != null) {
                     mMenuPopupWindow.dismiss();
                 }
             });
-            mSearchView = headView.findViewById(R.id.et_search);
+            mSearchView = view.findViewById(R.id.et_search);
             mSearchView.addTextChangedListener(new TextWatcher() {
                 @Override
                 public void beforeTextChanged(CharSequence s, int start, int count, int after) {
@@ -492,11 +492,10 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
                     }
                 }
             });
-            listView.addHeaderView(headView);
             listView.setAdapter(mMenuAdapter);
             listView.setOnItemClickListener(this);
             mMenuPopupWindow = new CommonPopupWindow.Builder(this)
-                    .setView(listView)
+                    .setView(view)
                     .setOutsideTouchable(true)
                     .setWidthAndHeight(getResources().getDimensionPixelSize(R.dimen.menu_width)
                             , ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -576,9 +575,12 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
             mMenuAdapter.clear();
             mMenuAdapter.addAll(menuList.menu.values());
             mMenuAdapter.getFilter().filter(null);
-            if (mSearchView != null) {
-                mSearchView.setText("");
-            }
+        }
+        if (mSearchView != null) {
+            mSearchView.setText("");
+        }
+        if (mUpdateView != null) {
+            mUpdateView.setText(getString(R.string.update_game, mMenuList.menu.size()));
         }
         selectGame(null);
         dismissProgressDialog();
