@@ -16,7 +16,9 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.text.Editable;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -32,6 +34,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.AdapterView;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.Toast;
 
@@ -50,7 +53,6 @@ import java.io.FileOutputStream;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Locale;
-import java.util.Map;
 
 @SuppressLint("SetJavaScriptEnabled")
 public class MainActivity extends Activity implements AdapterView.OnItemClickListener, MenuUtil.MenuTaskCallback {
@@ -59,6 +61,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
     private final static int _mmessage_sdkVersion = 621086720;
     private final static String _mmessage_appPackage = "com.tencent.mm";
 
+    private final static String CONFIG_LIST_VERSION = "game_list_version";
     private final static String CONFIG_GAME = "select_game";
 
     private static final String URL = "https://open.weixin.qq.com/connect/app/qrconnect?" +
@@ -68,6 +71,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
     private Menu mMenu;
     private CommonPopupWindow mMenuPopupWindow;
     private MenuAdapter mMenuAdapter;
+    private EditText mSearchView;
     private MenuItem mShareMenu;
     private WebView mWebView;
     private Bitmap mQrBitmap;
@@ -76,14 +80,43 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
     private GameInfo mCurrentGame;
     private String mCurrentUrl;
 
-    private Map<String, GameInfo> mGameList;
-
+    private MenuList mMenuList;
     private MenuUtil.MenuTask mMenuTask;
 
     @Override
     public void onCreate(Bundle bundle) {
         super.onCreate(bundle);
         initView();
+    }
+
+    private void initView() {
+        WebView.setWebContentsDebuggingEnabled(false);
+        setStatusBarColor();
+        setContentView(R.layout.activity_main);
+        mWebView = (WebView) findViewById(R.id.web_view);
+        WebSettings settings = mWebView.getSettings();
+        //  设置缓存规则
+        mWebView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
+        mWebView.getSettings().setDomStorageEnabled(true);
+        String appCachePath = getApplicationContext().getCacheDir()
+                .getAbsolutePath() + "/BrowserCache/";
+        mWebView.getSettings().setAppCachePath(appCachePath);
+        mWebView.getSettings().setAllowFileAccess(true);
+        mWebView.getSettings().setAppCacheEnabled(true);
+
+        mWebView.getSettings().setJavaScriptEnabled(true);
+        mWebView.setWebViewClient(new MyWebViewClient());
+        mWebView.setWebChromeClient(new MyWebChromeClient());
+        mWebView.addJavascriptInterface(new JavaScriptInterface(), "android");
+        settings.setUserAgentString("Mozilla/5.0 (Linux; Android 7.0; Mi-4c Build/NRD90M; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/53.0.2785.49 Mobile MQQBrowser/6.2 TBS/043632 Safari/537.36 MicroMessenger/6.6.1.1220(0x26060135) NetType/WIFI Language/zh_CN MicroMessenger/6.6.1.1220(0x26060135) NetType/WIFI Language/zh_CN miniProgram");
+        mConfig = getSharedPreferences("config", Context.MODE_PRIVATE);
+
+        if (mConfig.getInt(CONFIG_LIST_VERSION, -1) == -1) {
+            updateMenu(-1);
+        } else {
+            mMenuList = MenuUtil.getMenu(this);
+            selectGame(mMenuList.menu.get(mConfig.getString(CONFIG_GAME, "")));
+        }
     }
 
     @Override
@@ -143,7 +176,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
         } else if (item.getItemId() == R.id.more) {
             showGameMenu();
         } else {
-            GameInfo gameInfo = mGameList.get(item.getTitle().toString());
+            GameInfo gameInfo = mMenuList.menu.get(item.getTitle().toString());
             if (gameInfo != null)
                 selectGame(gameInfo);
         }
@@ -173,34 +206,6 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
         return true;
     }
 
-    private void initView() {
-        WebView.setWebContentsDebuggingEnabled(false);
-        setStatusBarColor();
-        setContentView(R.layout.activity_main);
-        mWebView = (WebView) findViewById(R.id.web_view);
-        WebSettings settings = mWebView.getSettings();
-        //  设置缓存规则
-        mWebView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
-        mWebView.getSettings().setDomStorageEnabled(true);
-        String appCachePath = getApplicationContext().getCacheDir()
-                .getAbsolutePath() + "/BrowserCache/";
-        mWebView.getSettings().setAppCachePath(appCachePath);
-        mWebView.getSettings().setAllowFileAccess(true);
-        mWebView.getSettings().setAppCacheEnabled(true);
-
-        mWebView.getSettings().setJavaScriptEnabled(true);
-        mWebView.setWebViewClient(new MyWebViewClient());
-        mWebView.setWebChromeClient(new MyWebChromeClient());
-        mWebView.addJavascriptInterface(new JavaScriptInterface(), "android");
-        settings.setUserAgentString("Mozilla/5.0 (Linux; Android 7.0; Mi-4c Build/NRD90M; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/53.0.2785.49 Mobile MQQBrowser/6.2 TBS/043632 Safari/537.36 MicroMessenger/6.6.1.1220(0x26060135) NetType/WIFI Language/zh_CN MicroMessenger/6.6.1.1220(0x26060135) NetType/WIFI Language/zh_CN miniProgram");
-        mConfig = getSharedPreferences("config", Context.MODE_PRIVATE);
-
-        MenuList menuList = MenuUtil.getMenu(this);
-        mGameList = menuList.menu;
-        selectGame(mGameList.get(mConfig.getString(CONFIG_GAME, "王者荣耀")));
-//        showMsgDialog(getString(R.string.help_dialog_title, mCurrentGame.name), mCurrentGame.help);
-    }
-
     private void setStatusBarColor() {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
@@ -210,7 +215,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
         if (position == 0) {
-            updateMenu();
+            updateMenu(mMenuList.version);
         } else if (position <= mMenuAdapter.getCount()) {
             selectGame(mMenuAdapter.getItem(position - 1));
         }
@@ -410,7 +415,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
 
     private void selectGame(GameInfo gameInfo) {
         if (gameInfo == null) {
-            gameInfo = mGameList.get(mGameList.keySet().iterator().next());
+            gameInfo = mMenuList.menu.get(mMenuList.menu.keySet().iterator().next());
         }
         if (gameInfo != null) {
             mCurrentGame = gameInfo;
@@ -456,10 +461,37 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
 
 
     private void showGameMenu() {
+        if (mMenuList == null)
+            return;
         if (mMenuPopupWindow == null) {
             ListView listView = (ListView) LayoutInflater.from(this).inflate(R.layout.menu_list, null);
-            mMenuAdapter = new MenuAdapter(this, new ArrayList<>(mGameList.values()));
+            mMenuAdapter = new MenuAdapter(this, new ArrayList<>(mMenuList.menu.values()));
             View headView = LayoutInflater.from(this).inflate(R.layout.menu_head, null);
+            headView.findViewById(R.id.tv_update).setOnClickListener(v -> {
+                updateMenu(mMenuList.version);
+                if (mMenuPopupWindow != null) {
+                    mMenuPopupWindow.dismiss();
+                }
+            });
+            mSearchView = headView.findViewById(R.id.et_search);
+            mSearchView.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+                }
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+                }
+
+                @Override
+                public void afterTextChanged(Editable s) {
+                    if (mMenuAdapter != null) {
+                        mMenuAdapter.getFilter().filter(s);
+                    }
+                }
+            });
             listView.addHeaderView(headView);
             listView.setAdapter(mMenuAdapter);
             listView.setOnItemClickListener(this);
@@ -483,12 +515,12 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
         mMenuPopupWindow.showAsDropDown(findViewById(R.id.more), 0, DimenUtil.Dp2Px(this, -40));
     }
 
-    private void updateMenu() {
+    private void updateMenu(int version) {
         if (mMenuTask != null) {
             mMenuTask.cancel(false);
         }
         mMenuTask = new MenuUtil.MenuTask(this);
-        mMenuTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, this);
+        mMenuTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, this, version);
     }
 
     private MsgDialogFragment mHelpDialog;
@@ -537,15 +569,18 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
 
     @Override
     public void onMenuTaskExecuted(MenuList menuList) {
-        if (menuList != null) {
-            mGameList = menuList.menu;
-            if (mMenuAdapter != null) {
-                mMenuAdapter.getItems().clear();
-                mMenuAdapter.getItems().addAll(mGameList.values());
-                mMenuAdapter.notifyDataSetChanged();
-                selectGame(null);
+        if (mConfig != null)
+            mConfig.edit().putInt(CONFIG_LIST_VERSION, menuList.version).apply();
+        mMenuList = menuList;
+        if (mMenuAdapter != null) {
+            mMenuAdapter.clear();
+            mMenuAdapter.addAll(menuList.menu.values());
+            mMenuAdapter.getFilter().filter(null);
+            if (mSearchView != null) {
+                mSearchView.setText("");
             }
         }
+        selectGame(null);
         dismissProgressDialog();
     }
 

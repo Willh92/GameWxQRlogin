@@ -39,9 +39,8 @@ public class MenuUtil {
         MenuList menuList = null;
         try {
             String menuJson = readFromFile(context);
-            if (TextUtils.isEmpty(menuJson))
-                menuJson = getAssetsJson(context);
-            menuList = jsonToMenuInfo(menuJson);
+            if (!TextUtils.isEmpty(menuJson))
+                menuList = jsonToMenuInfo(menuJson);
         } catch (Exception ignore) {
         }
         if (menuList == null) {
@@ -66,7 +65,9 @@ public class MenuUtil {
                 String pkg = g.optString("pkg");
                 String cls = g.optString("cls");
                 String help = g.optString("help");
-                GameInfo gameInfo = new GameInfo(name, appId, bundleId, defaultHelp);
+                String py = g.optString("py", "");
+                String icon = g.optString("icon", "");
+                GameInfo gameInfo = new GameInfo(name, appId, bundleId, defaultHelp, py, icon);
                 if (!TextUtils.isEmpty(pkg)) {
                     gameInfo.pkg = pkg;
                 }
@@ -109,7 +110,7 @@ public class MenuUtil {
         return bao.toString();
     }
 
-    public static class MenuTask extends AsyncTask<Context, Void, MenuList> {
+    public static class MenuTask extends AsyncTask<Object, Void, MenuList> {
 
         private MenuTaskCallback callback;
 
@@ -126,18 +127,22 @@ public class MenuUtil {
         }
 
         @Override
-        protected MenuList doInBackground(Context... contexts) {
-            Context context = contexts[0];
+        protected MenuList doInBackground(Object... contexts) {
+            Context context = (Context) contexts[0];
+            int version = (int) contexts[1];
+            MenuList menuList;
             String json = HttpClientUtil.doGet("https://gitee.com/willhz/GameWxQRlogin/raw/main/games/gameList-min.json");
             try {
-                MenuList menuList = jsonToMenuInfo(json);
+                menuList = jsonToMenuInfo(json);
                 if (menuList != null) {
                     saveToFile(context, json);
                 }
                 return menuList;
             } catch (Exception ignore) {
             }
-            return null;
+            menuList = new MenuList();
+            menuList.menu = DEFAULT_GAMES;
+            return menuList;
         }
 
         @Override
@@ -146,6 +151,7 @@ public class MenuUtil {
             if (callback != null) {
                 callback.onMenuTaskExecuted(menuList);
             }
+            clear();
         }
 
         @Override
@@ -154,7 +160,13 @@ public class MenuUtil {
             if (callback != null) {
                 callback.onMenuTaskCancelled();
             }
+            clear();
         }
+
+        private void clear() {
+            callback = null;
+        }
+
     }
 
     public interface MenuTaskCallback {
