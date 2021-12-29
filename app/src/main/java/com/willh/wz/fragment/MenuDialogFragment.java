@@ -107,7 +107,7 @@ public class MenuDialogFragment extends BaseDialogFragment implements AdapterVie
         window.setGravity(Gravity.RIGHT | Gravity.BOTTOM);
         window.getDecorView().setPadding(0, 0, 0, 0);
         WindowManager.LayoutParams lp = window.getAttributes();
-        lp.width = DimenUtil.Dp2Px(getActivity(), 200);
+        lp.width = getActivity().getResources().getDimensionPixelSize(R.dimen.menu_width);
         lp.height = WindowManager.LayoutParams.MATCH_PARENT;
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
 

@@ -35,6 +35,7 @@ import com.willh.wz.fragment.MenuDialogFragment;
 import com.willh.wz.fragment.MsgDialogFragment;
 import com.willh.wz.fragment.ProgressDialogFragment;
 import com.willh.wz.menu.MenuAdapter;
+import com.willh.wz.util.ImageLoaderUtil;
 import com.willh.wz.util.MD5Util;
 import com.willh.wz.util.MenuUtil;
 
@@ -113,6 +114,7 @@ public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback,
     }
 
     private void clear() {
+        ImageLoaderUtil.getInstance().cancelAll("menu");
         if (mQrBitmap != null) {
             mQrBitmap.recycle();
             mQrBitmap = null;

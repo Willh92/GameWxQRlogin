@@ -8,10 +8,12 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.Filter;
 import android.widget.Filterable;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.willh.wz.R;
 import com.willh.wz.bean.GameInfo;
+import com.willh.wz.util.ImageLoaderUtil;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -69,16 +71,19 @@ public class MenuAdapter extends BaseAdapter implements Filterable {
             holder = new ViewHolder();
             convertView.setTag(holder);
             holder.title = (TextView) convertView.findViewById(R.id.tv_title);
+            holder.icon = convertView.findViewById(R.id.iv_icon);
         } else {
             holder = (ViewHolder) convertView.getTag();
         }
         GameInfo menuItem = mItems.get(position);
         holder.title.setText(menuItem.name);
+        ImageLoaderUtil.getInstance().loadImage(menuItem.icon, holder.icon, true, "menu");
         return convertView;
     }
 
     static class ViewHolder {
         TextView title;
+        ImageView icon;
     }
 
     public void add(GameInfo object) {
