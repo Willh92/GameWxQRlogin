@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "defaultHelp": "1.打开要登录的游戏，注销当前登录。\n2.登录页如有用户协议等，勾选后游戏切换后台\n3.切换到扫码APP，出现二维码后点击分享给对方\n4.在扫码APP内等待对方扫码授权就可以自动跳转并登录游戏。\n5.如果跳转后没有自动登录，请杀掉游戏进程，重新打开游戏查看。\n6.如果还是没登录，请仔细检查步骤，步骤没错，那就是工具失效了。",
   "game": [
     {
@@ -190,7 +190,7 @@
       "pkg": "",
       "cls": "",
       "help": "",
-      "icon": "http://mmbiz.qpic.cn/mmbiz_png/ZcJe6RHwP63yZdMcgZico0wU9feTqnJ1jvbhl3KWzF2NSgUXDdenLfju1lUXcGibhIYDjks6YDBb5aXobXj5CxEw/0?wx_fmt=png"
+      "icon": "https://pp.myapp.com/ma_icon/0/icon_10415519_1630403326/96"
     },
     {
       "name": "王者营地",
@@ -200,7 +200,7 @@
       "pkg": "",
       "cls": "",
       "help": "",
-      "icon": "http://mmbiz.qpic.cn/mmbiz_png/dOxEdnUl4FFkRLibr9lw8y2iaBbKKjK1vxcwc6aJ1nHHV7DqC2zR747ZCzrTUYzr4AxDVJEg8Wep3q2VwRerCLeg/0?wx_fmt=png"
+      "icon": "http://file.market.xiaomi.com/thumbnail/PNG/l114/AppStore/0bf2725de288848eb8abd7b93586d580e5cc7c5b2"
     },
     {
       "name": "和平营地",
@@ -210,7 +210,7 @@
       "pkg": "",
       "cls": "",
       "help": "",
-      "icon": "http://mmbiz.qpic.cn/mmbiz_png/dOxEdnUl4FGNUXT6MicaIuicY3ZwhpKrrrmgCoGfW5GbgSL6bnKrkSFLltmRNViarkcxqrauaZXss7vRUvIkRSBRw/0?wx_fmt=png"
+      "icon": "http://file.market.xiaomi.com/thumbnail/PNG/l114/AppStore/0556624de27824693012d1c4f72601cc1d4c7ff40"
     },
     {
       "name": "妄想山海",
@@ -305,12 +305,12 @@
     {
       "name": "金铲铲之战",
       "py": "jcczz",
-      "appId": "",
+      "appId": "wxb23e82d26e8ab140",
       "bundleId": "com.tencent.jkchses",
       "pkg": "",
       "cls": "",
       "help": "",
-      "icon": "https://game.dailian.info/images/game_img/ff.jpg"
+      "icon": "http://file.market.xiaomi.com/thumbnail/PNG/l114/AppStore/0a974be48eccc4b2abdf27b59b7bffa1e931600c0"
     },
     {
       "name": "我的起源",
@@ -465,12 +465,12 @@
     {
       "name": "天涯明月刀",
       "py": "tymyd",
-      "appId": "",
+      "appId": "wxd9e0d500b5fb209f",
       "bundleId": "com.tencent.tmpg.wuxia",
       "pkg": "",
       "cls": "",
       "help": "",
-      "icon": "https://game.dailian.info/images/game_img/ff.jpg"
+      "icon": "http://file.market.xiaomi.com/thumbnail/PNG/l114/AppStore/05677c1d1ad7c40c6bdd52a4497467ad5d7b4dab1"
     },
     {
       "name": "妖怪名单",
@@ -506,11 +506,11 @@
       "name": "最牛弓箭手",
       "py": "zngjs",
       "appId": "wx6298a48f220f8a79",
-      "bundleId": "",
+      "bundleId": "com.tencent.tmgp.gjs",
       "pkg": "",
       "cls": "",
       "help": "",
-      "icon": "http://mmbiz.qpic.cn/mmbiz_png/NplFA7ZfhwQ95EESVBIDP8Dcp9tBeE2DRcD8wAB2CAsDFHr2DibLvuPeiaS1ticJnQSV8N7Z8xx2Yr6qVjmCrhTKQ/0?wx_fmt=png"
+      "icon": "https://syimg.3dmgame.com/uploadimg/ico/2019/0912/1568260710304026.png"
     },
     {
       "name": "FIFA足球",
@@ -990,17 +990,17 @@
       "pkg": "",
       "cls": "",
       "help": "",
-      "icon": "http://mmbiz.qpic.cn/mmbiz_png/IhqdWFWfmDJc2C3IbHhzNEB77pTs1NZWFrR3xhHeCcpaReFoALvKlNZC5XNUXYvgFyOrPNsP6SVdWpVm6GlZSw/0?wx_fmt=png"
+      "icon": "http://file.market.xiaomi.com/thumbnail/PNG/l114/AppStore/0e3e129774966416d9ad9cf187f85bb7e6b2654bb"
     },
     {
       "name": "明日之后",
       "py": "mrzh",
       "appId": "wxc488655a12a5c7ec",
-      "bundleId": "",
+      "bundleId": "com.netease.mrzh",
       "pkg": "",
       "cls": "",
       "help": "",
-      "icon": "http://mmbiz.qpic.cn/mmbiz_png/pUruVAtHAnDiabbumdiaUsuv8kTiaEic2cKQcKQ5Sib0ScyrI4icElP1aXQfI0mt5XibW1icWHtl8nAwEoGg6fpsAdicfGA/0?wx_fmt=png"
+      "icon": "http://file.market.xiaomi.com/thumbnail/PNG/l114/AppStore/02eb533fe8712403992c0436b774e8b7ad2dbc6c5"
     },
     {
       "name": "第五人格",
@@ -1010,7 +1010,7 @@
       "pkg": "",
       "cls": "",
       "help": "",
-      "icon": "http://mmbiz.qpic.cn/mmbiz_png/ic9gkibiazEgNXnWovFUIlBJEUmdAA3lib63QqJb5ib2JgrPMvMQZ45cX48qsicmqJ2324gMia5hssx83m3YXHia9oMG8w/0?wx_fmt=png"
+      "icon": "http://file.market.xiaomi.com/thumbnail/PNG/l114/AppStore/0df3d05362d96497a15c0b06a05f4bcbf5bcf67e1"
     },
     {
       "name": "龙族幻想",
@@ -1061,16 +1061,6 @@
       "cls": "",
       "help": "",
       "icon": "https://mmgame.qpic.cn/image/6421da132ae2beaf15a6863a1a6097623d166583c302c909998fb7cb3448f34e/0"
-    },
-    {
-      "name": "新笑傲江湖",
-      "py": "xxajh",
-      "appId": "",
-      "bundleId": "com.tencent.tmgp.xxajh",
-      "pkg": "",
-      "cls": "",
-      "help": "",
-      "icon": ""
     },
     {
       "name": "万国觉醒RoK",
