@@ -17,9 +17,11 @@
         <item name="android:windowIsFloating">true</item>
     </style>
 
-    <style name="menu_style" parent="android:Animation">
-        <item name="android:windowEnterAnimation">@null</item>
+    <style name="menu_dialog_style" parent="@android:style/Theme.NoTitleBar.Fullscreen">
+        <item name="android:windowEnterAnimation">@anim/menu_show</item>
         <item name="android:windowExitAnimation">@anim/menu_hide</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:windowIsFloating">true</item>
     </style>
 
 </resources>

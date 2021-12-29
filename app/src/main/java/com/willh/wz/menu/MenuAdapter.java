@@ -47,6 +47,10 @@ public class MenuAdapter extends BaseAdapter implements Filterable {
         return mItems.size();
     }
 
+    public int getOriginalCount() {
+        return mOriginalValues == null ? mItems.size() : mOriginalValues.size();
+    }
+
     @Override
     public GameInfo getItem(int position) {
         return mItems.get(position);
@@ -191,7 +195,7 @@ public class MenuAdapter extends BaseAdapter implements Filterable {
                 }
             }
 
-            if (prefix == null || prefix.length() == 0) {
+            if (prefix == null || prefix.length() == 0 || prefix.toString().replaceAll("\\s", "").isEmpty()) {
                 final ArrayList<GameInfo> list;
                 synchronized (mLock) {
                     list = new ArrayList<>(mOriginalValues);
@@ -199,7 +203,7 @@ public class MenuAdapter extends BaseAdapter implements Filterable {
                 results.values = list;
                 results.count = list.size();
             } else {
-                final String prefixString = prefix.toString().toLowerCase();
+                final String prefixString = prefix.toString().replaceAll("\\s", "").toLowerCase();
 
                 final ArrayList<GameInfo> values;
                 synchronized (mLock) {

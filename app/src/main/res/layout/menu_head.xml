@@ -15,6 +15,7 @@
         android:padding="12dp"
         android:text="@string/update_game"
         android:textColor="@color/colorPrimary"
+        android:textColorHint="@color/text_grey"
         android:textSize="17sp" />
 
     <LinearLayout
@@ -35,9 +36,9 @@
             android:drawableRight="@drawable/ic_search"
             android:focusable="true"
             android:hint="@string/search_name"
-            android:singleLine="true"
             android:paddingLeft="20dp"
             android:paddingRight="16dp"
+            android:singleLine="true"
             android:textColor="@color/colorPrimary"
             android:textColorHint="@color/text_black"
             android:textSize="14sp" />

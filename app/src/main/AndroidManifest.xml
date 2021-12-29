@@ -16,6 +16,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:configChanges=""
             android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustPan">
             <intent-filter>

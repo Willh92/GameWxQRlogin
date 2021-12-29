@@ -16,18 +16,10 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.text.Editable;
-import android.text.InputFilter;
 import android.text.TextUtils;
-import android.text.TextWatcher;
 import android.util.Base64;
-import android.view.KeyEvent;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.SslErrorHandler;
@@ -35,21 +27,14 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.AdapterView;
-import android.widget.EditText;
-import android.widget.ListView;
-import android.widget.PopupWindow;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.willh.wz.bean.GameInfo;
 import com.willh.wz.bean.MenuList;
-import com.willh.wz.filter.NameFilter;
+import com.willh.wz.fragment.MenuDialogFragment;
 import com.willh.wz.fragment.MsgDialogFragment;
 import com.willh.wz.fragment.ProgressDialogFragment;
 import com.willh.wz.menu.MenuAdapter;
-import com.willh.wz.pop.CommonPopupWindow;
-import com.willh.wz.util.DimenUtil;
 import com.willh.wz.util.MD5Util;
 import com.willh.wz.util.MenuUtil;
 
@@ -57,11 +42,10 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.security.MessageDigest;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Locale;
 
 @SuppressLint("SetJavaScriptEnabled")
-public class MainActivity extends Activity implements AdapterView.OnItemClickListener, MenuUtil.MenuTaskCallback {
+public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback, MenuDialogFragment.MenuClickListener {
 
     private final static String _mmessage_content = "";
     private final static int _mmessage_sdkVersion = 621086720;
@@ -74,10 +58,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
             "appid=%s&bundleid=%s" +
             "&scope=snsapi_base,snsapi_userinfo,snsapi_friend,snsapi_message&state=weixin";
 
-    private CommonPopupWindow mMenuPopupWindow;
     private MenuAdapter mMenuAdapter;
-    private EditText mSearchView;
-    private TextView mUpdateView;
     private MenuItem mShareMenu;
     private WebView mWebView;
     private Bitmap mQrBitmap;
@@ -215,16 +196,6 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
         getWindow().setStatusBarColor(getResources().getColor(R.color.colorPrimary));
-    }
-
-    @Override
-    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-        if (position >= 0 && position < mMenuAdapter.getCount()) {
-            selectGame(mMenuAdapter.getItem(position));
-        }
-        if (mMenuPopupWindow != null) {
-            mMenuPopupWindow.dismiss();
-        }
     }
 
     public class MyWebChromeClient extends WebChromeClient {
@@ -462,66 +433,16 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
         return galleryPath;
     }
 
+    private MenuDialogFragment mMenuDialog;
 
     private void showGameMenu() {
         if (mMenuList == null)
             return;
-        if (mMenuPopupWindow == null) {
-            View view = LayoutInflater.from(this).inflate(R.layout.menu_list, null);
-            ListView listView = (ListView) view.findViewById(R.id.list);
+        if (mMenuDialog == null) {
             mMenuAdapter = new MenuAdapter(this, new ArrayList<>(mMenuList.menu.values()));
-            mUpdateView = view.findViewById(R.id.tv_update);
-            mUpdateView.setText(getString(R.string.update_game, mMenuList.menu.size()));
-            mUpdateView.setOnClickListener(v -> {
-                updateMenu(mMenuList.version);
-                if (mMenuPopupWindow != null) {
-                    mMenuPopupWindow.dismiss();
-                }
-            });
-            mSearchView = view.findViewById(R.id.et_search);
-            InputFilter[] filters = Arrays.copyOf(mSearchView.getFilters(), mSearchView.getFilters().length + 1);
-            filters[filters.length - 1] = new NameFilter();
-            mSearchView.setFilters(filters);
-            mSearchView.addTextChangedListener(new TextWatcher() {
-                @Override
-                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-
-                }
-
-                @Override
-                public void onTextChanged(CharSequence s, int start, int before, int count) {
-
-                }
-
-                @Override
-                public void afterTextChanged(Editable s) {
-                    if (mMenuAdapter != null) {
-                        mMenuAdapter.getFilter().filter(s);
-                    }
-                }
-            });
-            mSearchView.setOnEditorActionListener((v, actionId, event) -> true);
-            listView.setAdapter(mMenuAdapter);
-            listView.setOnItemClickListener(this);
-            mMenuPopupWindow = new CommonPopupWindow.Builder(this)
-                    .setView(view)
-                    .setOutsideTouchable(true)
-                    .setWidthAndHeight(getResources().getDimensionPixelSize(R.dimen.menu_width)
-                            , ViewGroup.LayoutParams.WRAP_CONTENT)
-                    .setAnimationStyle(R.style.menu_style)
-                    .create();
+            mMenuDialog = MenuDialogFragment.getInstance(mMenuAdapter, this);
         }
-        if (mMenuPopupWindow.isShowing())
-            return;
-        Window window = getWindow();
-        if (getWindow() != null) {
-            WindowManager.LayoutParams params = window.getAttributes();
-            window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-            params.alpha = 0.8f;
-            window.setAttributes(params);
-        }
-        mMenuPopupWindow.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
-        mMenuPopupWindow.showAsDropDown(findViewById(R.id.more), 0, DimenUtil.Dp2Px(this, -40));
+        mMenuDialog.showAllowingStateLoss(getFragmentManager(), "MenuDialog");
     }
 
     private void updateMenu(int version) {
@@ -568,6 +489,16 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
     }
 
     @Override
+    public void onGameUpdateClick() {
+        updateMenu(mMenuList.version);
+    }
+
+    @Override
+    public void onGameSelect(GameInfo gameInfo) {
+        selectGame(gameInfo);
+    }
+
+    @Override
     public void onMenuTaskPreExecute() {
         showProgressDialog();
     }
@@ -586,11 +517,11 @@ public class MainActivity extends Activity implements AdapterView.OnItemClickLis
             mMenuAdapter.addAll(menuList.menu.values());
             mMenuAdapter.getFilter().filter(null);
         }
-        if (mSearchView != null) {
-            mSearchView.setText("");
-        }
-        if (mUpdateView != null) {
-            mUpdateView.setText(getString(R.string.update_game, mMenuList.menu.size()));
+        if (mMenuDialog != null) {
+            mMenuDialog.setSearchStr("");
+            if (mMenuDialog.getUpdateView() != null) {
+                mMenuDialog.getUpdateView().setText(getString(R.string.update_game, mMenuList.menu.size()));
+            }
         }
         selectGame(null);
         dismissProgressDialog();

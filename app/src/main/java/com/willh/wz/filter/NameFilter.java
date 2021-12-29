@@ -2,6 +2,7 @@ package com.willh.wz.filter;
 
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
+import android.text.TextUtils;
 
 import java.util.regex.Pattern;
 
@@ -12,9 +13,8 @@ public class NameFilter extends EmojiFilter {
 
     @Override
     public CharSequence filter(CharSequence source, int start, int end, Spanned dest, int dstart, int dend) {
-        if (source instanceof SpannableStringBuilder) {
-            return super.filter(source, start, end, dest, dstart, dend);
-        }
+        if ((TextUtils.isEmpty(source) && start == end) || source instanceof SpannableStringBuilder)
+            return null;
         return PATTERN.matcher(super.filter(source, start, end, dest, dstart, dend)).replaceAll("");
     }
 
