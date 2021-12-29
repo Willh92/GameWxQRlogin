@@ -14,7 +14,6 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.EditText;
-import android.widget.Filter;
 import android.widget.ListView;
 import android.widget.TextView;
 
@@ -37,6 +36,7 @@ public class MenuDialogFragment extends BaseDialogFragment implements AdapterVie
 
     private View mContentView;
     private String mSearchStr;
+    private boolean mNeedReset;
 
     public static MenuDialogFragment getInstance(MenuAdapter adapter, MenuClickListener listener) {
         MenuDialogFragment menu = new MenuDialogFragment();
@@ -78,7 +78,7 @@ public class MenuDialogFragment extends BaseDialogFragment implements AdapterVie
                     if (mMenuAdapter != null) {
                         mMenuAdapter.getFilter().filter(s, count -> {
                             if (isVisible()) {
-                                mListView.setSelection(0);
+                                setSelection(0);
                             }
                         });
                     }
@@ -113,6 +113,10 @@ public class MenuDialogFragment extends BaseDialogFragment implements AdapterVie
 
         setSearchStr(mSearchStr);
         mUpdateView.setText(getString(R.string.update_game, mMenuAdapter.getOriginalCount()));
+        if (mNeedReset) {
+            setSelection(0);
+        }
+        mNeedReset = false;
     }
 
     @Override
@@ -150,13 +154,25 @@ public class MenuDialogFragment extends BaseDialogFragment implements AdapterVie
             if (!mSearchStr.equals(mSearchView.getText().toString())) {
                 mSearchView.setText(mSearchStr);
                 mSearchView.setSelection(mSearchStr.length());
-                mListView.setSelection(0);
             }
         }
     }
 
-    public TextView getUpdateView() {
-        return mUpdateView;
+    public void resetView() {
+        mNeedReset = true;
+        setSearchStr("");
+        if (mUpdateView != null) {
+            mUpdateView.setText(mUpdateView.getContext().getString(R.string.update_game, mMenuAdapter.getOriginalCount()));
+        }
+        setSelection(0);
+    }
+
+    public void setSelection(int position) {
+        if (mListener != null) {
+            mListView.post(() -> {
+                if (mListView != null) mListView.setSelection(position);
+            });
+        }
     }
 
     @Override

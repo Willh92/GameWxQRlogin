@@ -156,9 +156,9 @@ public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback,
                 startShare();
             }
             return true;
-        } else if (item.getItemId() == R.id.help) {
-            if (mCurrentGame != null)
-                showMsgDialog(getString(R.string.help_dialog_title, mCurrentGame.name), mCurrentGame.help);
+//        } else if (item.getItemId() == R.id.help) {
+//            if (mCurrentGame != null)
+//                showMsgDialog(getString(R.string.help_dialog_title, mCurrentGame.name), mCurrentGame.help);
         } else if (item.getItemId() == R.id.more) {
             showGameMenu();
         } else {
@@ -267,7 +267,7 @@ public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback,
         }
     }
 
-    private final static String JS_MODIFY = "javascript:function modifyPage(){var cancel=document.getElementById('js_cancel_login');cancel.style.display='none';document.getElementsByClassName('auth_rights_tips')[0].innerHTML='扫码只用于授权，不会登录你的微信<br>部分特殊游戏登录，请查说明<br>版本:" + BuildConfig.VERSION_NAME + "';if(!document.getElementById('help')){var help = document.createElement('a');help.id='help';help.className='auth_msg_ft_link';help.style.display='block';help.style.marginTop='10px';help.href='javascript:android.showHelp()';help.appendChild(document.createTextNode('查看说明'));document.getElementsByClassName('auth_rights_tips')[0].appendChild(help);}};modifyPage();";
+    private final static String JS_MODIFY = "javascript:function modifyPage(){var cancel=document.getElementById('js_cancel_login');cancel.style.display='none';document.getElementsByClassName('auth_rights_tips')[0].innerHTML='扫码只用于授权，不会登录你的微信<br>部分特殊游戏登录，请查看说明<br>版本:" + BuildConfig.VERSION_NAME + "';if(!document.getElementById('help')){var help = document.createElement('a');help.id='help';help.className='auth_msg_ft_link';help.style.display='block';help.style.marginTop='10px';help.href='javascript:android.showHelp()';help.appendChild(document.createTextNode('查看扫码说明'));document.getElementsByClassName('auth_rights_tips')[0].appendChild(help);}};modifyPage();";
     private final static String JS_FINISH = "javascript:function getBase64Image(img,width,height){var canvas=document.createElement(\"canvas\");canvas.width=width?width:img.width;canvas.height=height?height:img.height;var ctx=canvas.getContext(\"2d\");ctx.drawImage(img,0,0,canvas.width,canvas.height);var dataURL=canvas.toDataURL();return dataURL};function loadImage(){modifyPage();var img=new Image();img.src=document.getElementsByClassName('auth_qrcode')[0].src;if(img.complete){android.loadQrcodeResult(getBase64Image(img));return}img.onload=function(){console.loadQrcodeResult(getBase64Image(img))}};jQuery(document).ready(function(){});loadImage();";
 
     private boolean isIntentSafe(Intent intent) {
@@ -518,10 +518,7 @@ public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback,
             mMenuAdapter.getFilter().filter(null);
         }
         if (mMenuDialog != null) {
-            mMenuDialog.setSearchStr("");
-            if (mMenuDialog.getUpdateView() != null) {
-                mMenuDialog.getUpdateView().setText(getString(R.string.update_game, mMenuList.menu.size()));
-            }
+            mMenuDialog.resetView();
         }
         selectGame(null);
         dismissProgressDialog();
