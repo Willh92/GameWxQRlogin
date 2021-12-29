@@ -6,6 +6,8 @@ import android.graphics.BitmapFactory.Options;
 import android.util.Log;
 import android.widget.ImageView;
 
+import com.willh.wz.BuildConfig;
+
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -17,7 +19,7 @@ import java.net.URL;
 public class DownloadImgUtils {
 
     private static final String TAG = "DownloadImgUtils";
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = BuildConfig.DEBUG;
 
     /**
      * 根据url下载图片在指定的文件

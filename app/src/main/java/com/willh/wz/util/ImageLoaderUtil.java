@@ -12,6 +12,7 @@ import android.util.Log;
 import android.util.LruCache;
 import android.widget.ImageView;
 
+import com.willh.wz.BuildConfig;
 import com.willh.wz.R;
 import com.willh.wz.util.image.DownloadImgUtils;
 import com.willh.wz.util.image.ImageSize;
@@ -34,7 +35,7 @@ import java.util.regex.Pattern;
 public class ImageLoaderUtil {
 
     private static final String TAG = "ImageLoader";
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = BuildConfig.DEBUG;
 
     private static ImageLoaderUtil mInstance;
 

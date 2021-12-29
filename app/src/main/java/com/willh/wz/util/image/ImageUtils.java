@@ -6,12 +6,14 @@ import android.util.Log;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.ImageView;
 
+import com.willh.wz.BuildConfig;
+
 import java.lang.reflect.Field;
 
 public class ImageUtils {
 
     private static final String TAG = "ImageUtils";
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = BuildConfig.DEBUG;
 
     /**
      * 根据ImageView获得适当的压缩的宽和高
