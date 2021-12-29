@@ -81,22 +81,24 @@ public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback,
         WebView.setWebContentsDebuggingEnabled(false);
         setStatusBarColor();
         setContentView(R.layout.activity_main);
-        mWebView = (WebView) findViewById(R.id.web_view);
+        mWebView = findViewById(R.id.web_view);
         WebSettings settings = mWebView.getSettings();
         //  设置缓存规则
-        mWebView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
-        mWebView.getSettings().setDomStorageEnabled(true);
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        settings.setDomStorageEnabled(true);
         String appCachePath = getApplicationContext().getCacheDir()
                 .getAbsolutePath() + "/BrowserCache/";
-        mWebView.getSettings().setAppCachePath(appCachePath);
-        mWebView.getSettings().setAllowFileAccess(true);
-        mWebView.getSettings().setAppCacheEnabled(true);
+        settings.setAppCachePath(appCachePath);
+        settings.setAllowFileAccess(true);
+        settings.setAppCacheEnabled(true);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        settings.setJavaScriptEnabled(true);
+        settings.setUserAgentString("Mozilla/5.0 (Linux; Android 7.0; Mi-4c Build/NRD90M; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/53.0.2785.49 Mobile MQQBrowser/6.2 TBS/043632 Safari/537.36 MicroMessenger/6.6.1.1220(0x26060135) NetType/WIFI Language/zh_CN MicroMessenger/6.6.1.1220(0x26060135) NetType/WIFI Language/zh_CN miniProgram");
 
-        mWebView.getSettings().setJavaScriptEnabled(true);
         mWebView.setWebViewClient(new MyWebViewClient());
         mWebView.setWebChromeClient(new MyWebChromeClient());
         mWebView.addJavascriptInterface(new JavaScriptInterface(), "android");
-        settings.setUserAgentString("Mozilla/5.0 (Linux; Android 7.0; Mi-4c Build/NRD90M; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/53.0.2785.49 Mobile MQQBrowser/6.2 TBS/043632 Safari/537.36 MicroMessenger/6.6.1.1220(0x26060135) NetType/WIFI Language/zh_CN MicroMessenger/6.6.1.1220(0x26060135) NetType/WIFI Language/zh_CN miniProgram");
+
         mConfig = getSharedPreferences("config", Context.MODE_PRIVATE);
 
         if (mConfig.getInt(CONFIG_LIST_VERSION, -1) == -1) {
