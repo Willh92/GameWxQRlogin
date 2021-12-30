@@ -3,10 +3,8 @@ package com.willh.wz.util.image;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.BitmapFactory.Options;
-import android.util.Log;
-import android.widget.ImageView;
 
-import com.willh.wz.BuildConfig;
+import com.willh.wz.util.LogUtil;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -16,27 +14,25 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
-public class DownloadImgUtils {
+public class DownloadUtil {
 
-    private static final String TAG = "DownloadImgUtils";
-    private static final boolean DEBUG = BuildConfig.DEBUG;
+    private static final String TAG = "DownloadUtil";
 
     /**
      * 根据url下载图片在指定的文件
      *
      * @param urlStr
-     * @param file
+     * @param imageFile
      * @return
      */
-    public static boolean downloadImgByUrl(String urlStr, File file) {
+    public static boolean downloadImgByUrl(String urlStr, File imageFile) {
         FileOutputStream fos = null;
         InputStream is = null;
         boolean loaded = false;
-        File tmpFile = new File(file.getAbsolutePath() + ".tmp");
+        File tmpFile = new File(imageFile.getAbsolutePath() + ".tmp");
         try {
             URL url = new URL(urlStr);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-
             is = conn.getInputStream();
             fos = new FileOutputStream(tmpFile);
             byte[] buf = new byte[512];
@@ -46,10 +42,8 @@ public class DownloadImgUtils {
             }
             fos.flush();
             loaded = true;
-
         } catch (Exception e) {
-            if (DEBUG)
-                Log.e(TAG, e.toString());
+            LogUtil.e(TAG, e.toString());
         } finally {
             try {
                 if (is != null)
@@ -61,7 +55,7 @@ public class DownloadImgUtils {
                     fos.close();
             } catch (IOException ignore) {
             }
-            if (loaded && !tmpFile.renameTo(file)) {
+            if (loaded && !tmpFile.renameTo(imageFile)) {
                 loaded = false;
             }
             if (!loaded) {
@@ -71,44 +65,40 @@ public class DownloadImgUtils {
         return loaded;
     }
 
-    public static Bitmap downloadImgByUrl(String urlStr, ImageView imageview) {
-        FileOutputStream fos = null;
+    public static Bitmap loadImageByUrl(String urlStr, ImageSize imageViewSize) {
         InputStream is = null;
+        HttpURLConnection conn = null;
         try {
             URL url = new URL(urlStr);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn = (HttpURLConnection) url.openConnection();
             is = new BufferedInputStream(conn.getInputStream());
             is.mark(is.available());
 
             Options opts = new Options();
             opts.inJustDecodeBounds = true;
-            Bitmap bitmap = BitmapFactory.decodeStream(is, null, opts);
+            BitmapFactory.decodeStream(is, null, opts);
 
             // 获取imageview想要显示的宽和高
-            ImageSize imageViewSize = ImageUtils.getImageViewSize(imageview);
             opts.inSampleSize = ImageUtils.calculateInSampleSize(opts,
                     imageViewSize.width, imageViewSize.height);
 
             opts.inJustDecodeBounds = false;
             is.reset();
-            bitmap = BitmapFactory.decodeStream(is, null, opts);
-
+            Bitmap bitmap = BitmapFactory.decodeStream(is, null, opts);
             conn.disconnect();
             return bitmap;
-
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (Exception ignore) {
         } finally {
             try {
                 if (is != null)
                     is.close();
             } catch (IOException ignore) {
             }
-
             try {
-                if (fos != null)
-                    fos.close();
-            } catch (IOException ignore) {
+                if (conn != null) {
+                    conn.disconnect();
+                }
+            } catch (Exception ignore) {
             }
         }
         return null;

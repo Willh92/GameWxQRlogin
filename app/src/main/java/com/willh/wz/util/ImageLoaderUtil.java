@@ -2,7 +2,6 @@ package com.willh.wz.util;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
@@ -12,14 +11,12 @@ import android.util.LruCache;
 import android.widget.ImageView;
 
 import com.willh.wz.R;
-import com.willh.wz.util.image.DownloadImgUtils;
+import com.willh.wz.util.image.DownloadUtil;
 import com.willh.wz.util.image.ImageSize;
 import com.willh.wz.util.image.ImageTag;
 import com.willh.wz.util.image.ImageUtils;
 
 import java.io.File;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.LinkedList;
 import java.util.Locale;
 import java.util.Map;
@@ -76,6 +73,10 @@ public class ImageLoaderUtil {
      * 启用本地缓存
      */
     private boolean isDiskCacheEnable = true;
+    /**
+     *
+     */
+    private static final String CACHE_DIR = ".image_loader";
     /**
      * 滑动暂停锁
      */
@@ -229,12 +230,12 @@ public class ImageLoaderUtil {
     /**
      * 根据传入的参数，新建一个任务
      *
-     * @param path
+     * @param url
      * @param imageView
      * @param isFromNet
      * @return
      */
-    private TaskRunnable buildTask(final String path,
+    private TaskRunnable buildTask(final String url,
                                    final ImageView imageView, final boolean isFromNet, ImageTag imageTag, Object tag) {
         return new TaskRunnable(tag) {
             @Override
@@ -259,50 +260,69 @@ public class ImageLoaderUtil {
                 Bitmap bm = getBitmapFromLruCache(imageTag.key);
                 try {
                     if (bm != null) {
-                        refreshBitmap(path, imageView, imageTag, bm);
+                        refreshBitmap(url, imageView, imageTag, bm);
                     } else if (!isCancel()) {
                         if (isFromNet) {
-                            File file = getDiskCacheDir(imageView.getContext(),
-                                    imageTag.key);
-                            if (file.exists())// 如果在缓存文件中发现
-                            {
-                                LogUtil.d(TAG, "find image :" + path
-                                        + " in disk cache .");
+                            File file = getDiskCacheFile(imageView.getContext(), imageTag.key);
+                            if (file.exists()) {  // 如果在缓存文件中发现
+                                LogUtil.d(TAG, "find image :" + url
+                                        + " in disk cache.");
                                 bm = loadImageFromLocal(file.getAbsolutePath(),
-                                        imageView);
+                                        imageTag.size);
                             } else {
-                                if (isDiskCacheEnable)// 检测是否开启硬盘缓存
-                                {
-                                    boolean downloadState = DownloadImgUtils
-                                            .downloadImgByUrl(path, file);
-                                    if (downloadState)// 如果下载成功
-                                    {
-                                        LogUtil.d(TAG, "download image :" + path
-                                                + " to disk cache . path is "
-                                                + file.getAbsolutePath());
-                                        bm = loadImageFromLocal(
-                                                file.getAbsolutePath(),
-                                                imageView);
+                                // 检测是否开启硬盘缓存
+                                if (isDiskCacheEnable) {
+                                    File origin = getDiskCacheFile(imageView.getContext(), url);
+                                    if (!origin.exists()) {  //没下载过原文件
+                                        boolean downloadState = DownloadUtil   //下载原文件
+                                                .downloadImgByUrl(url, origin);
+                                        LogUtil.d(TAG, "download image :" + url
+                                                + " to disk cache " + downloadState + ". path is "
+                                                + origin.getAbsolutePath());
+                                    } else {
+                                        LogUtil.d(TAG, "find image origin:" + url
+                                                + " to disk cache.path is "
+                                                + origin.getAbsolutePath());
                                     }
-                                } else
-                                // 直接从网络加载
-                                {
-                                    LogUtil.d(TAG, "load image :" + path
+                                    if (origin.exists()) {
+                                        //从原文件加载指定大小的图片
+                                        bm = loadImageFromLocal(
+                                                origin.getAbsolutePath(),
+                                                imageTag.size);
+                                        if (bm == null) {
+                                            origin.delete();  //原文件加载失败，删除
+                                            LogUtil.d(TAG, "get image size:" + url
+                                                    + " from disk error.delete origin path is "
+                                                    + origin.getAbsolutePath());
+                                        } else {
+                                            //缓存指定大小的文件
+                                            if (ImageUtils.saveBitmapFile(bm, file) != null) {
+                                                LogUtil.d(TAG, "save image size:" + url
+                                                        + " to disk cache. path is "
+                                                        + file.getAbsolutePath());
+                                            } else {
+                                                LogUtil.d(TAG, "save image size:" + url
+                                                        + " to disk cache error. path is "
+                                                        + file.getAbsolutePath());
+                                            }
+                                        }
+                                    }
+                                } else {   // 直接从网络加载
+                                    LogUtil.d(TAG, "load image :" + url
                                             + " to memory.");
                                     if (!isCancel()) {
-                                        bm = DownloadImgUtils.downloadImgByUrl(
-                                                path, imageView);
+                                        bm = DownloadUtil.loadImageByUrl(
+                                                url, imageTag.size);
                                     }
                                 }
                             }
                         } else {
-                            bm = loadImageFromLocal(path, imageView);
+                            bm = DownloadUtil.loadImageByUrl(url, imageTag.size);
                         }
-                        // 3、如果图片不为空，把图片加入到缓存
-                        if (bm != null) {
+                        if (bm != null) {  // 3、如果图片不为空，把图片加入到缓存
                             addBitmapToLruCache(imageTag.key, bm);
                             if (!isCancel()) {
-                                refreshBitmap(path, imageView, imageTag, bm);
+                                refreshBitmap(url, imageView, imageTag, bm);
                             }
                         }
                     }
@@ -317,16 +337,9 @@ public class ImageLoaderUtil {
     }
 
     private Bitmap loadImageFromLocal(final String path,
-                                      final ImageView imageView) {
-        Bitmap bm;
-        // 加载图片
-        // 图片的压缩
-        // 1、获得图片需要显示的大小
-        ImageSize imageSize = ImageUtils.getImageViewSize(imageView);
-        // 2、压缩图片
-        bm = decodeSampledBitmapFromPath(path, imageSize.width,
+                                      final ImageSize imageSize) {
+        return ImageUtils.decodeSampledBitmapFromPath(path, imageSize.width,
                 imageSize.height);
-        return bm;
     }
 
     /**
@@ -341,48 +354,6 @@ public class ImageLoaderUtil {
             return mTaskQueue.removeLast();
         }
         return null;
-    }
-
-    /**
-     * 利用签名辅助类，将字符串字节数组
-     *
-     * @param str
-     * @return
-     */
-    public String md5(String str) {
-        byte[] digest;
-        try {
-            MessageDigest md = MessageDigest.getInstance("md5");
-            digest = md.digest(str.getBytes());
-            return bytes2hex02(digest);
-
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    /**
-     * 方式二
-     *
-     * @param bytes
-     * @return
-     */
-    public String bytes2hex02(byte[] bytes) {
-        StringBuilder sb = new StringBuilder();
-        String tmp = null;
-        for (byte b : bytes) {
-            // 将每个字节与0xFF进行与运算，然后转化为10进制，然后借助于Integer再转化为16进制
-            tmp = Integer.toHexString(0xFF & b);
-            if (tmp.length() == 1)// 每个字节8为，转为16进制标志，2个16进制位
-            {
-                tmp = "0" + tmp;
-            }
-            sb.append(tmp);
-        }
-
-        return sb.toString();
-
     }
 
     private void refreshBitmap(final String path, final ImageView imageView,
@@ -429,45 +400,8 @@ public class ImageLoaderUtil {
                 key = url;
             }
         }
-        return new ImageTag(md5(String.format(Locale.getDefault(), "%s:%d:%d", key, imageSize.width, imageSize.height))
+        return new ImageTag(MD5Util.toMD5(String.format(Locale.getDefault(), "%s:%d:%d", key, imageSize.width, imageSize.height))
                 , imageSize);
-    }
-
-    /**
-     * 根据图片需要显示的宽和高对图片进行压缩
-     *
-     * @param path
-     * @param width
-     * @param height
-     * @return
-     */
-    protected Bitmap decodeSampledBitmapFromPath(String path, int width,
-                                                 int height) {
-        // 获得图片的宽和高，并不把图片加载到内存中
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inJustDecodeBounds = true;
-        BitmapFactory.decodeFile(path, options);
-
-        options.inSampleSize = ImageUtils.calculateInSampleSize(options, width,
-                height);
-
-        // 使用获得到的InSampleSize再次解析图片
-        options.inJustDecodeBounds = false;
-        options.inPreferredConfig = Bitmap.Config.RGB_565;
-        Bitmap bitmap = BitmapFactory.decodeFile(path, options);
-
-        // 不保存宽高比缩放
-        // Bitmap tempBitmap = bitmap;
-        // if (tempBitmap != null
-        // && (tempBitmap.getWidth() > width || tempBitmap.getHeight() >
-        // height)) {
-        // bitmap = Bitmap.createScaledBitmap(tempBitmap, width, height, true);
-        // tempBitmap.recycle();
-        // } else {
-        // bitmap = tempBitmap;
-        // }
-
-        return bitmap;
     }
 
     private synchronized void addTask(TaskRunnable runnable) {
@@ -481,21 +415,36 @@ public class ImageLoaderUtil {
     }
 
     /**
-     * 获得缓存图片的地址
+     * 获取缓存路径
      *
      * @param context
-     * @param uniqueName
+     * @param url     图片原链接
      * @return
      */
-    public File getDiskCacheDir(Context context, String uniqueName) {
-        String cachePath;
+    public File getDiskCacheFile(Context context, String url) {
+        File cachePath;
         if (Environment.MEDIA_MOUNTED.equals(Environment
                 .getExternalStorageState())) {
-            cachePath = context.getExternalCacheDir().getPath();
+            cachePath = context.getExternalFilesDir(CACHE_DIR);
         } else {
-            cachePath = context.getCacheDir().getPath();
+            cachePath = new File(context.getCacheDir(), CACHE_DIR);
         }
-        return new File(cachePath + File.separator + uniqueName);
+        if (!cachePath.exists())
+            cachePath.mkdirs();
+        return new File(cachePath, MD5Util.toMD5(url));
+    }
+
+    public File getDiskCacheDir(Context context) {
+        File cachePath;
+        if (Environment.MEDIA_MOUNTED.equals(Environment
+                .getExternalStorageState())) {
+            cachePath = context.getExternalFilesDir(CACHE_DIR);
+        } else {
+            cachePath = new File(context.getCacheDir(), CACHE_DIR);
+        }
+        if (!cachePath.exists())
+            cachePath.mkdirs();
+        return cachePath;
     }
 
     /**

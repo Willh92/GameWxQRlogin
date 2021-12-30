@@ -38,6 +38,7 @@ import com.willh.wz.menu.MenuAdapter;
 import com.willh.wz.util.ImageLoaderUtil;
 import com.willh.wz.util.MD5Util;
 import com.willh.wz.util.MenuUtil;
+import com.willh.wz.util.image.ImageUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -176,7 +177,7 @@ public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback,
     private void startShare() {
         try {
             if (mQrBitmap != null && !mQrBitmap.isRecycled()) {
-                File img = saveBitmapFile(mQrBitmap, "qr.jpg");
+                File img = ImageUtils.saveQrBitmapFile(this, mQrBitmap, "qr.jpg");
                 if (img != null)
                     shareOneFile(img.getAbsolutePath());
             }
@@ -356,40 +357,6 @@ public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback,
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
     }
 
-    public File saveBitmapFile(Bitmap b, String fileName) {
-        File dir;
-        if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            dir = getCacheDir();
-        } else {
-            dir = getGalleryPath();
-        }
-        FileOutputStream fos = null;
-        try {
-            File file = new File(dir, fileName
-                    + ".temp");
-            if (file.exists()) {
-                file.delete();
-            }
-            fos = new FileOutputStream(file);
-            b.compress(Bitmap.CompressFormat.JPEG, 100, fos);
-            File picFile = new File(dir, fileName);
-            if (file.renameTo(picFile)) {
-                return picFile;
-            } else {
-                return null;
-            }
-        } catch (Exception ignore) {
-        } finally {
-            try {
-                if (fos != null) {
-                    fos.flush();
-                    fos.close();
-                }
-            } catch (Exception ignore) {
-            }
-        }
-        return null;
-    }
 
     private void selectGame(GameInfo gameInfo) {
         if (gameInfo == null) {
@@ -427,14 +394,6 @@ public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback,
             uri = Uri.fromFile(file);
         }
         return uri;
-    }
-
-    private File getGalleryPath() {
-        File galleryPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
-        if (!galleryPath.exists() && !galleryPath.mkdir()) {
-            return null;
-        }
-        return galleryPath;
     }
 
     private MenuDialogFragment mMenuDialog;

@@ -1,19 +1,25 @@
 package com.willh.wz.util.image;
 
+import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.Build;
+import android.os.Environment;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.ImageView;
 
 import com.willh.wz.BuildConfig;
+import com.willh.wz.util.LogUtil;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.lang.reflect.Field;
 
 public class ImageUtils {
 
     private static final String TAG = "ImageUtils";
-    private static final boolean DEBUG = BuildConfig.DEBUG;
 
     /**
      * 根据ImageView获得适当的压缩的宽和高
@@ -73,10 +79,14 @@ public class ImageUtils {
      */
     public static int calculateInSampleSize(BitmapFactory.Options options,
                                             int reqWidth, int reqHeight) {
+        int inSampleSize = 1;
+
+        if (reqWidth <= 0 || reqHeight <= 0)
+            return inSampleSize;
+
         // 源图片的宽度
         int width = options.outWidth;
         int height = options.outHeight;
-        int inSampleSize = 1;
 
         if (width > reqWidth && height > reqHeight) {
             // 计算出实际宽度和目标宽度的比率
@@ -102,12 +112,94 @@ public class ImageUtils {
             int fieldValue = (Integer) field.get(object);
             if (fieldValue > 0 && fieldValue < Integer.MAX_VALUE) {
                 value = fieldValue;
-                if (DEBUG)
-                    Log.e(TAG, value + "");
+                LogUtil.e(TAG, value + "");
             }
         } catch (Exception ignore) {
         }
         return value;
+    }
+
+    /**
+     * 根据图片需要显示的宽和高对图片进行压缩
+     *
+     * @param path
+     * @param width
+     * @param height
+     * @return
+     */
+    public static Bitmap decodeSampledBitmapFromPath(String path, int width,
+                                                     int height) {
+        // 获得图片的宽和高，并不把图片加载到内存中
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(path, options);
+
+        options.inSampleSize = ImageUtils.calculateInSampleSize(options, width,
+                height);
+
+        // 使用获得到的InSampleSize再次解析图片
+        options.inJustDecodeBounds = false;
+        options.inPreferredConfig = Bitmap.Config.RGB_565;
+        Bitmap bitmap = BitmapFactory.decodeFile(path, options);
+
+        // 不保存宽高比缩放
+        // Bitmap tempBitmap = bitmap;
+        // if (tempBitmap != null
+        // && (tempBitmap.getWidth() > width || tempBitmap.getHeight() >
+        // height)) {
+        // bitmap = Bitmap.createScaledBitmap(tempBitmap, width, height, true);
+        // tempBitmap.recycle();
+        // } else {
+        // bitmap = tempBitmap;
+        // }
+
+        return bitmap;
+    }
+
+    public static File saveQrBitmapFile(Context context, Bitmap bitmap, String fileName) {
+        File dir;
+        if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            dir = context.getCacheDir();
+        } else {
+            dir = getGalleryPath();
+        }
+        return saveBitmapFile(bitmap, new File(dir, fileName));
+    }
+
+    public static File saveBitmapFile(Bitmap bitmap, File save) {
+        FileOutputStream fos = null;
+        try {
+            File file = new File(save.getParent(), save.getName().split("\\.")[0]
+                    + ".temp");
+            if (file.exists()) {
+                file.delete();
+            }
+            fos = new FileOutputStream(file);
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+            if (file.renameTo(save)) {
+                return save;
+            } else {
+                return null;
+            }
+        } catch (Exception ignore) {
+        } finally {
+            try {
+                if (fos != null) {
+                    fos.flush();
+                    fos.close();
+                }
+            } catch (Exception ignore) {
+            }
+        }
+        return null;
+    }
+
+    public static File getGalleryPath() {
+        File galleryPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
+        if (!galleryPath.exists() && !galleryPath.mkdir()) {
+            return null;
+        }
+        return galleryPath;
     }
 
 }
