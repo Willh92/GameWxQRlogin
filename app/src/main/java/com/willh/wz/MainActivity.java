@@ -116,7 +116,7 @@ public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback,
     }
 
     private void clear() {
-        ImageLoaderUtil.getInstance().cancelAll("menu");
+        ImageLoaderUtil.getInstance().cancelAll(null);
         if (mQrBitmap != null) {
             mQrBitmap.recycle();
             mQrBitmap = null;

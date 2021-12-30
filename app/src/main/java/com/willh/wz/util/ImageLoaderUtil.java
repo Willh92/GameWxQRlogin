@@ -8,20 +8,20 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.text.TextUtils;
-import android.util.Log;
 import android.util.LruCache;
 import android.widget.ImageView;
 
-import com.willh.wz.BuildConfig;
 import com.willh.wz.R;
 import com.willh.wz.util.image.DownloadImgUtils;
 import com.willh.wz.util.image.ImageSize;
+import com.willh.wz.util.image.ImageTag;
 import com.willh.wz.util.image.ImageUtils;
 
 import java.io.File;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.LinkedList;
+import java.util.Locale;
 import java.util.Map;
 import java.util.WeakHashMap;
 import java.util.concurrent.ExecutorService;
@@ -35,7 +35,6 @@ import java.util.regex.Pattern;
 public class ImageLoaderUtil {
 
     private static final String TAG = "ImageLoader";
-    private static final boolean DEBUG = BuildConfig.DEBUG;
 
     private static ImageLoaderUtil mInstance;
 
@@ -102,20 +101,31 @@ public class ImageLoaderUtil {
 
         // 获取我们应用的最大可用内存
         int maxMemory = (int) Runtime.getRuntime().maxMemory();
-        int cacheMemory = maxMemory / 8;
+        int cacheMemory = maxMemory / 4;
         mLruCache = new LruCache<String, Bitmap>(cacheMemory) {
             @Override
             protected int sizeOf(String key, Bitmap value) {
                 return value.getRowBytes() * value.getHeight();
             }
-
         };
 
         // 创建线程池
         mThreadPool = Executors.newFixedThreadPool(threadCount);
-        mTaskQueue = new LinkedList<TaskRunnable>();
+        mTaskQueue = new LinkedList<>();
         mType = type;
         mSemaphoreThreadPool = new Semaphore(threadCount);
+        mUIHandler = new Handler(Looper.getMainLooper()) {
+            public void handleMessage(Message msg) {
+                ImgBeanHolder holder = (ImgBeanHolder) msg.obj;
+                Bitmap bm = holder.bitmap;
+                ImageView imageview = holder.imageView;
+                ImageTag imageTag = holder.imageTag;
+                String path = holder.path;
+                if (imageTag.equals(imageview.getTag())) {
+                    imageview.setImageBitmap(bm);
+                }
+            }
+        };
     }
 
     /**
@@ -134,7 +144,7 @@ public class ImageLoaderUtil {
                         mThreadPool.execute(getTask());
                         try {
                             mSemaphoreThreadPool.acquire();
-                        } catch (InterruptedException e) {
+                        } catch (InterruptedException ignore) {
                         }
                     }
                 };
@@ -142,8 +152,6 @@ public class ImageLoaderUtil {
                 mSemaphorePoolThreadHandler.release();
                 Looper.loop();
             }
-
-            ;
         };
 
         mPoolThread.start();
@@ -187,50 +195,35 @@ public class ImageLoaderUtil {
      */
     public void loadImage(final String path, final int defaultImageResource,
                           final ImageView imageView, final boolean isFromNet, Object tag) {
-        // 图片名字必须为唯一的
-        String imgName = getPicNameByUrl(path);
 
-        if ("null".equals(imgName) || TextUtils.isEmpty(imgName)) { // 过滤图片名为null的情况
-            imageView.setTag("");
+        if (TextUtils.isEmpty(path) || imageView == null)
+            return;
+        ImageTag imageTag = generateTag(imageView, path);
+
+        if (imageTag == null) {
+            imageView.setTag(null);
             imageView.setImageResource(defaultImageResource);
             return;
         }
+
 
         if (imageView.getTag() != null
-                && imageView.getTag().toString().equals(imgName)) {
+                && imageView.getTag().equals(imageTag)) {
             return;
-        } else {
-            imageView.setImageResource(defaultImageResource);
-            imageView.setTag(imgName);
         }
 
-        if (mUIHandler == null) {
-            mUIHandler = new Handler(Looper.getMainLooper()) {
-                public void handleMessage(Message msg) {
-                    // 获取得到图片，为imageview回调设置图片
-                    ImgBeanHolder holder = (ImgBeanHolder) msg.obj;
-                    Bitmap bm = holder.bitmap;
-                    ImageView imageview = holder.imageView;
-                    String path = holder.path;
-                    // 将path与getTag存储路径进行比较
-                    if (imageview.getTag().toString()
-                            .equals(getPicNameByUrl(path))) {
-                        imageview.setImageBitmap(bm);
-                    }
-                }
-
-                ;
-            };
-        }
-
-        // 根据path在缓存中获取bitmap
-        Bitmap bm = getBitmapFromLruCache(path);
+        //从缓存中直接获取
+        Bitmap bm = getBitmapFromLruCache(imageTag.key);
         if (bm != null) {
-            refreashBitmap(path, imageView, bm);
-        } else {
-            addTask(buildTask(path, imageView, isFromNet, tag));
+            imageView.setImageBitmap(bm);
+            imageView.setTag(imageTag);
+            return;
         }
 
+        //缓存不存在添加到任务
+        imageView.setImageResource(defaultImageResource);
+        imageView.setTag(imageTag);
+        addTask(buildTask(path, imageView, isFromNet, imageTag, tag));
     }
 
     /**
@@ -242,7 +235,7 @@ public class ImageLoaderUtil {
      * @return
      */
     private TaskRunnable buildTask(final String path,
-                                   final ImageView imageView, final boolean isFromNet, Object tag) {
+                                   final ImageView imageView, final boolean isFromNet, ImageTag imageTag, Object tag) {
         return new TaskRunnable(tag) {
             @Override
             public void run() {
@@ -250,31 +243,30 @@ public class ImageLoaderUtil {
                     mSemaphoreThreadPool.release();
                     return;
                 } else {
-                    if (!imageView.getTag().toString()
-                            .equals(getPicNameByUrl(path))) {
+                    if (!imageTag.equals(imageView.getTag())) {
                         mSemaphoreThreadPool.release();
                         return;
                     }
                 }
 
-                ReentrantLock loadFromUriLock = getLockForUri(getPicNameByUrl(path));
-                Log.d(TAG, "start display image task");
+                ReentrantLock loadFromUriLock = getLockForUri(imageTag.key);
+                LogUtil.d(TAG, "start display image task");
                 if (loadFromUriLock.isLocked()) {
-                    Log.d(TAG, "waiting for image loaded");
+                    LogUtil.d(TAG, "waiting for image loaded");
                 }
                 loadFromUriLock.lock();
 
-                Bitmap bm = getBitmapFromLruCache(path);
+                Bitmap bm = getBitmapFromLruCache(imageTag.key);
                 try {
                     if (bm != null) {
-                        refreashBitmap(path, imageView, bm);
+                        refreshBitmap(path, imageView, imageTag, bm);
                     } else if (!isCancel()) {
                         if (isFromNet) {
                             File file = getDiskCacheDir(imageView.getContext(),
-                                    getPicNameByUrl(path));
+                                    imageTag.key);
                             if (file.exists())// 如果在缓存文件中发现
                             {
-                                Log.d(TAG, "find image :" + path
+                                LogUtil.d(TAG, "find image :" + path
                                         + " in disk cache .");
                                 bm = loadImageFromLocal(file.getAbsolutePath(),
                                         imageView);
@@ -285,7 +277,7 @@ public class ImageLoaderUtil {
                                             .downloadImgByUrl(path, file);
                                     if (downloadState)// 如果下载成功
                                     {
-                                        Log.d(TAG, "download image :" + path
+                                        LogUtil.d(TAG, "download image :" + path
                                                 + " to disk cache . path is "
                                                 + file.getAbsolutePath());
                                         bm = loadImageFromLocal(
@@ -295,7 +287,7 @@ public class ImageLoaderUtil {
                                 } else
                                 // 直接从网络加载
                                 {
-                                    Log.d(TAG, "load image :" + path
+                                    LogUtil.d(TAG, "load image :" + path
                                             + " to memory.");
                                     if (!isCancel()) {
                                         bm = DownloadImgUtils.downloadImgByUrl(
@@ -308,14 +300,14 @@ public class ImageLoaderUtil {
                         }
                         // 3、如果图片不为空，把图片加入到缓存
                         if (bm != null) {
-                            addBitmapToLruCache(path, bm);
+                            addBitmapToLruCache(imageTag.key, bm);
                             if (!isCancel()) {
-                                refreashBitmap(path, imageView, bm);
+                                refreshBitmap(path, imageView, imageTag, bm);
                             }
                         }
                     }
                 } catch (Exception e) {
-                    Log.e(TAG, e.toString());
+                    LogUtil.e(TAG, e.toString());
                 } finally {
                     loadFromUriLock.unlock();
                     mSemaphoreThreadPool.release();
@@ -358,7 +350,7 @@ public class ImageLoaderUtil {
      * @return
      */
     public String md5(String str) {
-        byte[] digest = null;
+        byte[] digest;
         try {
             MessageDigest md = MessageDigest.getInstance("md5");
             digest = md.digest(str.getBytes());
@@ -393,13 +385,16 @@ public class ImageLoaderUtil {
 
     }
 
-    private void refreashBitmap(final String path, final ImageView imageView,
-                                Bitmap bm) {
+    private void refreshBitmap(final String path, final ImageView imageView,
+                               final ImageTag tag, Bitmap bm) {
+        if (!tag.equals(imageView.getTag()))
+            return;
         Message message = Message.obtain();
         ImgBeanHolder holder = new ImgBeanHolder();
         holder.bitmap = bm;
         holder.path = path;
         holder.imageView = imageView;
+        holder.imageTag = tag;
         message.obj = holder;
         mUIHandler.sendMessage(message);
     }
@@ -407,34 +402,35 @@ public class ImageLoaderUtil {
     /**
      * 将图片加入LruCache
      *
-     * @param path
+     * @param key
      * @param bm
      */
-    protected void addBitmapToLruCache(String path, Bitmap bm) {
-        String ImgName = getPicNameByUrl(path);
-        if (getBitmapFromLruCache(ImgName) == null) {
-            if (bm != null)
-                mLruCache.put(ImgName, bm);
-        }
+    protected void addBitmapToLruCache(String key, Bitmap bm) {
+        if (bm != null)
+            mLruCache.put(key, bm);
     }
 
-    /**
-     * 从带参url提取图片名称,错误的情况下返回原来的url
-     *
-     * @param url
-     * @return
-     */
-    private String getPicNameByUrl(String url) {
-        if (!TextUtils.isEmpty(url)
-                && (url.startsWith("http://") || url.startsWith("https://"))) {
+
+    private ImageTag generateTag(ImageView imageView, String url) {
+        ImageSize imageSize = ImageUtils.getImageViewSize(imageView);
+        String key = "";
+        if (TextUtils.isEmpty(url))
+            return null;
+        if (url.startsWith("http://") || url.startsWith("https://")) {
             String matchPicNameStr = "/([^/]*?)(.jpg|.bmp|.gif|\\?)";
             Pattern p = Pattern.compile(matchPicNameStr);
             Matcher m = p.matcher(url);
-            while (m.find()) {
-                return m.group(1);
+            if (m.find()) {
+                key = m.group(1);
+                if ("null".equals(key)) {
+                    return null;
+                }
+            } else {
+                key = url;
             }
         }
-        return md5(url);
+        return new ImageTag(md5(String.format(Locale.getDefault(), "%s:%d:%d", key, imageSize.width, imageSize.height))
+                , imageSize);
     }
 
     /**
@@ -509,13 +505,14 @@ public class ImageLoaderUtil {
      * @return
      */
     private Bitmap getBitmapFromLruCache(String key) {
-        return mLruCache.get(getPicNameByUrl(key));
+        return mLruCache.get(key);
     }
 
-    private class ImgBeanHolder {
+    private static class ImgBeanHolder {
         Bitmap bitmap;
         ImageView imageView;
         String path;
+        ImageTag imageTag;
     }
 
     ReentrantLock getLockForUri(String uri) {
@@ -558,16 +555,7 @@ public class ImageLoaderUtil {
     }
 
     public void cancelAll(final Object tag) {
-        if (tag == null) {
-            throw new IllegalArgumentException(
-                    "Cannot cancelAll with a null tag");
-        }
-        cancelAll(new RequestFilter() {
-            @Override
-            public boolean apply(TaskRunnable task) {
-                return task.getTag() == tag;
-            }
-        });
+        cancelAll(task -> (tag == null || tag.equals(task.getTag())));
     }
 
     public void cancelAll(RequestFilter filter) {
@@ -607,18 +595,18 @@ public class ImageLoaderUtil {
         if (pause.get()) {
             synchronized (getPauseLock()) {
                 if (pause.get()) {
-                    if (DEBUG)
-                        Log.d(TAG, "watting for resume");
+                    LogUtil.d(TAG, "watting for resume");
                     try {
                         getPauseLock().wait();
                     } catch (InterruptedException e) {
-                        Log.e(TAG, "task interrupted");
+                        LogUtil.e(TAG, "task interrupted");
                         return true;
                     }
-                    Log.d(TAG, "resume after pasuse");
+                    LogUtil.d(TAG, "resume after pasuse");
                 }
             }
         }
         return false;
     }
+
 }

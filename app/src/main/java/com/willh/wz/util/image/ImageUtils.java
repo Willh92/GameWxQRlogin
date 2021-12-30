@@ -35,8 +35,14 @@ public class ImageUtils {
             width = getImageViewFieldValue(imageView, "mMaxWidth"); // Check
         // maxWidth
         // parameter
-        if (width <= 0)
-            width = displayMetrics.widthPixels;
+        if (width <= 0) {
+            if (params.width == LayoutParams.WRAP_CONTENT) {
+                width = LayoutParams.WRAP_CONTENT;
+            } else {
+                width = displayMetrics.widthPixels;
+            }
+        }
+
         int height = params.height == LayoutParams.WRAP_CONTENT ? 0 : imageView
                 .getHeight(); // Get actual image height
         if (height <= 0)
@@ -45,8 +51,13 @@ public class ImageUtils {
             height = getImageViewFieldValue(imageView, "mMaxHeight"); // Check
         // maxHeight
         // parameter
-        if (height <= 0)
-            height = displayMetrics.heightPixels;
+        if (height <= 0) {
+            if (params.height == LayoutParams.WRAP_CONTENT) {
+                height = LayoutParams.WRAP_CONTENT;
+            } else {
+                height = displayMetrics.heightPixels;
+            }
+        }
         imageSize.width = width;
         imageSize.height = height;
         return imageSize;
