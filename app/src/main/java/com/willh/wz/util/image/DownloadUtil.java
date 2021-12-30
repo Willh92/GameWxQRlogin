@@ -18,6 +18,8 @@ public class DownloadUtil {
 
     private static final String TAG = "DownloadUtil";
 
+    private static final int CONNECTION_TIMEOUT = 3_000;
+
     /**
      * 根据url下载图片在指定的文件
      *
@@ -26,24 +28,33 @@ public class DownloadUtil {
      * @return
      */
     public static boolean downloadImgByUrl(String urlStr, File imageFile) {
+        HttpURLConnection conn = null;
         FileOutputStream fos = null;
         InputStream is = null;
         boolean loaded = false;
         File tmpFile = new File(imageFile.getAbsolutePath() + ".tmp");
         try {
             URL url = new URL(urlStr);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            is = conn.getInputStream();
-            fos = new FileOutputStream(tmpFile);
-            byte[] buf = new byte[512];
-            int len = 0;
-            while ((len = is.read(buf)) != -1) {
-                fos.write(buf, 0, len);
+            LogUtil.d(TAG, "downloadImgByUrl start:" + urlStr);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setConnectTimeout(CONNECTION_TIMEOUT);
+            conn.setReadTimeout(CONNECTION_TIMEOUT);
+            conn.connect();
+            int responseCode = conn.getResponseCode();
+            if (responseCode == 200) {
+                is = conn.getInputStream();
+                fos = new FileOutputStream(tmpFile);
+                byte[] buf = new byte[1024];
+                int len;
+                while ((len = is.read(buf)) != -1) {
+                    fos.write(buf, 0, len);
+                }
+                fos.flush();
+                LogUtil.d(TAG, "downloadImgByUrl success:" + urlStr);
+                loaded = true;
             }
-            fos.flush();
-            loaded = true;
         } catch (Exception e) {
-            LogUtil.e(TAG, e.toString());
+            LogUtil.e(TAG, "downloadImgByUrl error:" + e.toString());
         } finally {
             try {
                 if (is != null)
@@ -60,6 +71,12 @@ public class DownloadUtil {
             }
             if (!loaded) {
                 tmpFile.delete();
+            }
+            try {
+                if (conn != null) {
+                    conn.disconnect();
+                }
+            } catch (Exception ignore) {
             }
         }
         return loaded;
