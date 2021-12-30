@@ -250,7 +250,7 @@ public class ImageLoaderUtil {
                     }
                 }
 
-                ReentrantLock loadFromUriLock = getLockForUri(imageTag.key);
+                ReentrantLock loadFromUriLock = getLockForUri(MD5Util.toMD5(url));
                 LogUtil.d(TAG, "start display image task");
                 if (loadFromUriLock.isLocked()) {
                     LogUtil.d(TAG, "waiting for image loaded");
