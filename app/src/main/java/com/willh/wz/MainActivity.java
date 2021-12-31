@@ -15,7 +15,6 @@ import android.net.http.SslError;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.text.TextUtils;
 import android.util.Base64;
 import android.view.Menu;
@@ -31,37 +30,26 @@ import android.widget.Toast;
 
 import com.willh.wz.bean.GameInfo;
 import com.willh.wz.bean.MenuList;
+import com.willh.wz.bean.Version;
 import com.willh.wz.fragment.MenuDialogFragment;
 import com.willh.wz.fragment.MsgDialogFragment;
 import com.willh.wz.fragment.ProgressDialogFragment;
 import com.willh.wz.menu.MenuAdapter;
+import com.willh.wz.util.CommonUtil;
+import com.willh.wz.util.FileUtil;
 import com.willh.wz.util.ImageLoaderUtil;
-import com.willh.wz.util.MD5Util;
+import com.willh.wz.util.LoginUtil;
 import com.willh.wz.util.MenuUtil;
 import com.willh.wz.util.image.ImageUtils;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Locale;
 
 @SuppressLint("SetJavaScriptEnabled")
-public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback, MenuDialogFragment.MenuClickListener {
-
-    private final static String _mmessage_content = "";
-    private final static int _mmessage_sdkVersion = 621086720;
-    private final static String _mmessage_appPackage = "com.tencent.mm";
-
-    private final static String CONFIG_LIST_VERSION = "game_list_version";
-    private final static String CONFIG_GAME = "select_game";
-
-    private static final String URL = "https://open.weixin.qq.com/connect/app/qrconnect?" +
-            "appid=%s&bundleid=%s" +
-            "&scope=snsapi_base,snsapi_userinfo,snsapi_friend,snsapi_message&state=weixin";
+public class MainActivity extends Activity implements MenuDialogFragment.MenuClickListener {
 
     private MenuAdapter mMenuAdapter;
-    private MenuItem mShareMenu;
     private WebView mWebView;
     private Bitmap mQrBitmap;
 
@@ -69,8 +57,10 @@ public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback,
     private GameInfo mCurrentGame;
     private String mCurrentUrl;
 
+    private Version mVersion;
+    private MenuUtil.NetGetTask<Version> mVersionTask;
     private MenuList mMenuList;
-    private MenuUtil.MenuTask mMenuTask;
+    private MenuUtil.NetGetTask<MenuList> mMenuTask;
 
     @Override
     public void onCreate(Bundle bundle) {
@@ -79,7 +69,7 @@ public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback,
     }
 
     private void initView() {
-        WebView.setWebContentsDebuggingEnabled(false);
+        WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG);
         setStatusBarColor();
         setContentView(R.layout.activity_main);
         mWebView = findViewById(R.id.web_view);
@@ -100,14 +90,27 @@ public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback,
         mWebView.setWebChromeClient(new MyWebChromeClient());
         mWebView.addJavascriptInterface(new JavaScriptInterface(), "android");
 
-        mConfig = getSharedPreferences("config", Context.MODE_PRIVATE);
+        getConfig();
+        getVersion();
+    }
 
-        if (mConfig.getInt(CONFIG_LIST_VERSION, -1) == -1) {
-            updateMenu(-1);
+    private void initMenu(Version version) {
+        mVersion = version;
+        int menuVersion = getConfig().getInt(Constant.CONFIG_LIST_VERSION, -1);
+        if (menuVersion == -1) { //本地没有
+            updateMenu(true);
         } else {
             mMenuList = MenuUtil.getMenu(this);
-            selectGame(mMenuList.menu.get(mConfig.getString(CONFIG_GAME, "")));
+            selectGame(mMenuList.menu.get(getConfig().getString(Constant.CONFIG_GAME, "")));
+            checkVersion();
         }
+    }
+
+    private SharedPreferences getConfig() {
+        if (mConfig == null) {
+            mConfig = getSharedPreferences("config", Context.MODE_PRIVATE);
+        }
+        return mConfig;
     }
 
     @Override
@@ -121,6 +124,9 @@ public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback,
         if (mQrBitmap != null) {
             mQrBitmap.recycle();
             mQrBitmap = null;
+        }
+        if (mVersionTask != null) {
+            mVersionTask.cancel(false);
         }
         if (mMenuTask != null) {
             mMenuTask.cancel(false);
@@ -142,8 +148,6 @@ public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback,
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main, menu);
-        mShareMenu = (MenuItem) menu.findItem(R.id.share);
-        mShareMenu.setVisible(false);
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -151,19 +155,10 @@ public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback,
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.refresh) {
             if (mWebView != null) {
-                mShareMenu.setVisible(false);
                 mWebView.clearHistory();
                 mWebView.loadUrl(mCurrentUrl);
             }
             return true;
-        } else if (item.getItemId() == R.id.share) {
-            if (checkPermission()) {
-                startShare();
-            }
-            return true;
-//        } else if (item.getItemId() == R.id.help) {
-//            if (mCurrentGame != null)
-//                showMsgDialog(getString(R.string.help_dialog_title, mCurrentGame.name), mCurrentGame.help);
         } else if (item.getItemId() == R.id.more) {
             showGameMenu();
         } else {
@@ -220,13 +215,6 @@ public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback,
     public class MyWebViewClient extends WebViewClient {
 
         @Override
-        public void onPageStarted(WebView view, String url, Bitmap favicon) {
-            super.onPageStarted(view, url, favicon);
-            if (mShareMenu != null)
-                mShareMenu.setVisible(false);
-        }
-
-        @Override
         public void onLoadResource(WebView view, String url) {
             super.onLoadResource(view, url);
         }
@@ -248,7 +236,7 @@ public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback,
                         Intent intent = new Intent();
                         intent.setAction(Intent.ACTION_VIEW);
                         intent.setComponent(new ComponentName(gameInfo.pkg, gameInfo.cls));
-                        intent.putExtras(generateBundle(url));
+                        intent.putExtras(LoginUtil.generateBundle(url));
                         if (isIntentSafe(intent)) {
                             startActivity(intent);
                         }
@@ -272,68 +260,9 @@ public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback,
         }
     }
 
-    private final static String JS_MODIFY = "javascript:function modifyPage(){var cancel=document.getElementById('js_cancel_login');cancel.style.display='none';document.getElementsByClassName('auth_rights_tips')[0].innerHTML='扫码只用于授权，不会登录你的微信<br>部分特殊游戏登录，请查看说明<br>版本:" + BuildConfig.VERSION_NAME + "';if(!document.getElementById('help')){var help = document.createElement('a');help.id='help';help.className='auth_msg_ft_link';help.style.display='block';help.style.marginTop='10px';help.href='javascript:android.showHelp()';help.appendChild(document.createTextNode('查看扫码说明'));document.getElementsByClassName('auth_rights_tips')[0].appendChild(help);}};modifyPage();";
+    private final static String JS_MODIFY = "javascript:function modifyPage(){var cancel=document.getElementById('js_cancel_login');cancel.style.display='none';document.getElementsByClassName('auth_msg_bd')[0].style.marginTop='60px';document.getElementsByClassName('auth_rights_tips')[0].innerHTML='扫码只用于授权，不会登录你的微信<br>部分特殊游戏登录，请查看说明<br>版本:" + BuildConfig.VERSION_NAME + "';if(!document.getElementById('help')){var help = document.createElement('a');help.id='help';help.className='auth_msg_ft_link';help.style.display='block';help.style.marginTop='10px';help.href='javascript:android.showHelp()';help.appendChild(document.createTextNode('查看扫码说明'));document.getElementsByClassName('auth_rights_tips')[0].appendChild(help);}if(!document.getElementById('share')){var share = document.createElement('a');share.id='share';share.className='auth_msg_ft_link';share.style.display='block';share.style.marginTop='10px';share.style.visibility='hidden';share.href='javascript:android.shareQr()';share.appendChild(document.createTextNode('点击分享二维码'));document.getElementsByClassName('auth_msg_hd')[0].appendChild(share);}};modifyPage();";
     private final static String JS_FINISH = "javascript:function getBase64Image(img,width,height){var canvas=document.createElement(\"canvas\");canvas.width=width?width:img.width;canvas.height=height?height:img.height;var ctx=canvas.getContext(\"2d\");ctx.drawImage(img,0,0,canvas.width,canvas.height);var dataURL=canvas.toDataURL();return dataURL};function loadImage(){modifyPage();var img=new Image();img.src=document.getElementsByClassName('auth_qrcode')[0].src;if(img.complete){android.loadQrcodeResult(getBase64Image(img));return}img.onload=function(){console.loadQrcodeResult(getBase64Image(img))}};jQuery(document).ready(function(){});loadImage();";
-
-    private boolean isIntentSafe(Intent intent) {
-        return getPackageManager()
-                .queryIntentActivities(intent, 0).size() > 0;
-    }
-
-    private Bundle generateBundle(String req) {
-        Bundle bundle = new Bundle();
-        int indexOf = req.indexOf("&state=");
-        String code = indexOf >= 0 ? req.substring(req.indexOf("code=") + 5, indexOf) : "";
-        String state = indexOf >= 0 ? req.substring(indexOf + 7) : "";
-        //auth start
-        bundle.putInt("_wxapi_command_type", 1);
-        bundle.putString("_wxapi_sendauth_resp_token", code);
-        bundle.putString("_wxapi_sendauth_resp_state", state);
-        bundle.putString("_wxapi_sendauth_resp_url", req);
-        bundle.putString("_wxapi_sendauth_resp_lang", "zh_CN");
-        bundle.putString("_wxapi_sendauth_resp_country", "CN");
-        bundle.putBoolean("_wxapi_sendauth_resp_auth_result", true);
-        bundle.putString("_wxapi_baseresp_openId", null);
-        bundle.putString("_wxapi_baseresp_transaction", null);
-        bundle.putInt("_wxapi_baseresp_errcode", 0);
-        bundle.putString("_wxapi_baseresp_errstr", null);
-        //auth end
-        bundle.putString("_message_token", null);
-        bundle.putString("_mmessage_appPackage", _mmessage_appPackage);
-        bundle.putString("_mmessage_content", _mmessage_content);
-        bundle.putByteArray("_mmessage_checksum", generateCheckSum(_mmessage_content, _mmessage_sdkVersion, _mmessage_appPackage));
-        bundle.putString("wx_token_key", "com.tencent.mm.openapi.token");
-        bundle.putInt("_mmessage_sdkVersion", _mmessage_sdkVersion);
-        return bundle;
-    }
-
-    private final char[] HEX = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
-
-    private byte[] generateCheckSum(String content, int sdkVersion, String appPackage) {
-        String result = "";
-        StringBuilder sb = new StringBuilder();
-        if (content != null) {
-            sb.append(content);
-        }
-        sb.append(sdkVersion);
-        sb.append(appPackage);
-        sb.append("mMcShCsTr");
-        byte[] bytes = sb.substring(1, 9).getBytes();
-        try {
-            MessageDigest instance = MessageDigest.getInstance(MD5Util.TAG);
-            instance.update(bytes);
-            byte[] digest = instance.digest();
-            char[] hex = new char[digest.length * 2];
-            int index = 0;
-            for (byte b : digest) {
-                hex[index++] = HEX[(b >>> 4) & 15];
-                hex[index++] = HEX[b & 15];
-            }
-            result = new String(hex);
-        } catch (Exception ignore) {
-        }
-        return result.getBytes();
-    }
+    private final static String JS_SHOW_SHARE = "javascript:function showShare(){var share=document.getElementById('share');if(share){share.style.visibility='visible'}};showShare();";
 
     private class JavaScriptInterface {
 
@@ -341,7 +270,11 @@ public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback,
         public void loadQrcodeResult(String image) {
             clear();
             mQrBitmap = base64ToBitmap(image.replace("data:image/png;base64,", ""));
-            runOnUiThread(() -> mShareMenu.setVisible(true));
+            runOnUiThread(() -> {
+                if (mWebView != null) {
+                    mWebView.loadUrl(JS_SHOW_SHARE);
+                }
+            });
         }
 
         @JavascriptInterface
@@ -350,6 +283,16 @@ public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback,
                     , mCurrentGame.help));
         }
 
+        @JavascriptInterface
+        public void shareQr() {
+            runOnUiThread(MainActivity.this::startShare);
+        }
+
+    }
+
+    private boolean isIntentSafe(Intent intent) {
+        return getPackageManager()
+                .queryIntentActivities(intent, 0).size() > 0;
     }
 
     public static Bitmap base64ToBitmap(String base64Data) {
@@ -364,10 +307,10 @@ public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback,
         }
         if (gameInfo != null) {
             mCurrentGame = gameInfo;
-            mCurrentUrl = String.format(Locale.getDefault(), URL, mCurrentGame.appId, mCurrentGame.bundleId);
+            mCurrentUrl = String.format(Locale.getDefault(), Constant.URL, mCurrentGame.appId, mCurrentGame.bundleId);
             mWebView.clearHistory();
             mWebView.loadUrl(mCurrentUrl);
-            mConfig.edit().putString(CONFIG_GAME, gameInfo.name).apply();
+            getConfig().edit().putString(Constant.CONFIG_GAME, gameInfo.name).apply();
         }
     }
 
@@ -408,12 +351,160 @@ public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback,
         mMenuDialog.showAllowingStateLoss(getFragmentManager(), "MenuDialog");
     }
 
-    private void updateMenu(int version) {
+    private void getVersion() {
+        if (mVersionTask != null) {
+            mVersionTask.cancel(false);
+        }
+        mVersionTask = MenuUtil.getVersion(new MenuUtil.NetCallBack<Version>() {
+
+            @Override
+            public void onPreExecute() {
+                super.onPreExecute();
+                showProgressDialog();
+            }
+
+            @Override
+            public Version onNetResult(String result, Version version) {
+                if (version == null) {
+                    version = MenuUtil.getVersion(MainActivity.this);
+                } else {
+                    boolean save = FileUtil.saveToFile(new File(MainActivity.this.getFilesDir(), Constant.FILE_VERSION), result);
+                    if (save) {
+                        int oldVersion = getConfig().getInt(Constant.CONFIG_VERSION, 0);
+                        SharedPreferences.Editor editor = getConfig().edit();
+                        if (oldVersion < version.version) {
+                            editor.putBoolean(Constant.CONFIG_ANNOUNCEMENT_SHOW, false);
+                            editor.putLong(Constant.CONFIG_ANNOUNCEMENT_TIME, 0L);
+                        }
+                        editor.putInt(Constant.CONFIG_VERSION, version.version);
+                        editor.apply();
+                    }
+                }
+                return super.onNetResult(result, version);
+            }
+
+            @Override
+            public void onExecuted(Version version) {
+                super.onExecuted(version);
+                dismissProgressDialog();
+                initMenu(version);
+            }
+
+        });
+        mVersionTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+    }
+
+    private void updateMenu(boolean first) {
         if (mMenuTask != null) {
             mMenuTask.cancel(false);
         }
-        mMenuTask = new MenuUtil.MenuTask(this);
-        mMenuTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, this, version);
+        mMenuTask = MenuUtil.getMenuTask(new MenuUtil.NetCallBack<MenuList>() {
+            @Override
+            public void onPreExecute() {
+                super.onPreExecute();
+                showProgressDialog();
+            }
+
+            @Override
+            public MenuList onNetResult(String result, MenuList menuList) {
+                if (menuList == null) {
+                    menuList = MenuUtil.getMenu(MainActivity.this);
+                } else {
+                    boolean save = FileUtil.saveToFile(new File(MainActivity.this.getFilesDir(), Constant.FILE_MENU), result);
+                    if (save)
+                        getConfig().edit().putInt(Constant.CONFIG_LIST_VERSION, menuList.version).apply();
+                }
+                return super.onNetResult(result, menuList);
+            }
+
+            @Override
+            public void onExecuted(MenuList menuList) {
+                super.onExecuted(menuList);
+                mMenuList = menuList;
+                if (mMenuAdapter != null) {
+                    mMenuAdapter.clear();
+                    mMenuAdapter.addAll(menuList.menu.values());
+                    mMenuAdapter.getFilter().filter(null);
+                }
+                if (mMenuDialog != null) {
+                    mMenuDialog.resetView();
+                }
+                selectGame(null);
+                dismissProgressDialog();
+                if (first)
+                    checkVersion();
+            }
+
+        });
+        mMenuTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+    }
+
+    private void checkVersion() {
+        if (mVersion != null) {
+            Version.Msg msg = mVersion.msg;
+            if (msg != null && msg.enable) {
+                switch (msg.mode) {
+                    case Version.MSG_SHOW_MODE_DAY:
+                        if (CommonUtil.isSameDate(System.currentTimeMillis()
+                                , getConfig().getLong(Constant.CONFIG_ANNOUNCEMENT_TIME, 0L))) {
+                            checkGameUpdate();
+                        } else {
+                            showAnnouncementDialog(msg.title, msg.msg);
+                        }
+                        break;
+                    case Version.MSG_SHOW_MODE_ONE:
+                        if (getConfig().getBoolean(Constant.CONFIG_ANNOUNCEMENT_SHOW, false)) {
+                            checkGameUpdate();
+                        } else {
+                            showAnnouncementDialog(msg.title, msg.msg);
+                        }
+                        break;
+                    case Version.MSG_SHOW_MODE_START:
+                        showAnnouncementDialog(msg.title, msg.msg);
+                        break;
+                }
+            } else {
+                checkGameUpdate();
+            }
+        }
+    }
+
+    private void checkGameUpdate() {
+        if (mVersion != null && mVersion.menuVersion > mMenuList.version) {
+            showUpdateDialog();
+        }
+    }
+
+    private MsgDialogFragment mAnnouncementDialog;
+
+    private void showAnnouncementDialog(String title, String msg) {
+        if (mAnnouncementDialog == null) {
+            mAnnouncementDialog = new MsgDialogFragment();
+            mAnnouncementDialog.setOnDismissListener(dialog -> checkGameUpdate());
+            mAnnouncementDialog.setLeftGone(true)
+                    .setRightText(getString(R.string.help_known));
+        }
+        SharedPreferences.Editor editor = getConfig().edit();
+        editor.putBoolean(Constant.CONFIG_ANNOUNCEMENT_SHOW, true);
+        editor.putLong(Constant.CONFIG_ANNOUNCEMENT_TIME, System.currentTimeMillis());
+        editor.apply();
+        mAnnouncementDialog.setTitleText(title).setMsgText(msg).show(getFragmentManager(), "AnnouncementDialog");
+    }
+
+    private MsgDialogFragment mUpdateDialog;
+
+    private void showUpdateDialog() {
+        if (mUpdateDialog == null) {
+            mUpdateDialog = new MsgDialogFragment()
+                    .setMsgText(getString(R.string.update_tips))
+                    .setLeftText(getString(R.string.common_cancel))
+                    .setRightText(getString(R.string.update))
+                    .setRightButtonClickListener(msgDialogFragment -> {
+                        updateMenu(false);
+                        msgDialogFragment.dismissAllowingStateLoss();
+                    });
+        }
+        mUpdateDialog.show(getFragmentManager(), "UpdateDialog");
     }
 
     private MsgDialogFragment mHelpDialog;
@@ -424,7 +515,7 @@ public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback,
             mHelpDialog.setLeftGone(true)
                     .setRightText(getString(R.string.help_known));
         }
-        mHelpDialog.setTitleText(title).setMsgText(msg).show(getFragmentManager(), "MsgDialogFragment");
+        mHelpDialog.setTitleText(title).setMsgText(msg).show(getFragmentManager(), "MsgDialog");
     }
 
     private ProgressDialogFragment mProgressDialog;
@@ -453,38 +544,12 @@ public class MainActivity extends Activity implements MenuUtil.MenuTaskCallback,
 
     @Override
     public void onGameUpdateClick() {
-        updateMenu(mMenuList.version);
+        updateMenu(false);
     }
 
     @Override
     public void onGameSelect(GameInfo gameInfo) {
         selectGame(gameInfo);
-    }
-
-    @Override
-    public void onMenuTaskPreExecute() {
-        showProgressDialog();
-    }
-
-    @Override
-    public void onMenuTaskCancelled() {
-    }
-
-    @Override
-    public void onMenuTaskExecuted(MenuList menuList) {
-        if (mConfig != null)
-            mConfig.edit().putInt(CONFIG_LIST_VERSION, menuList.version).apply();
-        mMenuList = menuList;
-        if (mMenuAdapter != null) {
-            mMenuAdapter.clear();
-            mMenuAdapter.addAll(menuList.menu.values());
-            mMenuAdapter.getFilter().filter(null);
-        }
-        if (mMenuDialog != null) {
-            mMenuDialog.resetView();
-        }
-        selectGame(null);
-        dismissProgressDialog();
     }
 
 }

@@ -47,4 +47,5 @@ public class GameInfo {
         this.icon = icon;
         this.py = py;
     }
+
 }

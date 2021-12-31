@@ -6,4 +6,6 @@
     <string name="help_known">知道啦</string>
     <string name="update_game">更新列表(%d)</string>
     <string name="search_name">搜索游戏</string>
+    <string name="update">更新</string>
+    <string name="update_tips">检测到游戏列表有更新，是否立即更新？</string>
 </resources>

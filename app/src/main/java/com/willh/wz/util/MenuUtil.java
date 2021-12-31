@@ -1,34 +1,19 @@
 package com.willh.wz.util;
 
 import android.content.Context;
-import android.content.SharedPreferences;
-import android.content.res.AssetManager;
 import android.os.AsyncTask;
-import android.os.Environment;
 import android.text.TextUtils;
 
+import com.willh.wz.Constant;
 import com.willh.wz.bean.GameInfo;
 import com.willh.wz.bean.Games;
+import com.willh.wz.bean.JsonParse;
 import com.willh.wz.bean.MenuList;
+import com.willh.wz.bean.Version;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
+import java.lang.reflect.ParameterizedType;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class MenuUtil {
@@ -38,9 +23,12 @@ public class MenuUtil {
     public static MenuList getMenu(Context context) {
         MenuList menuList = null;
         try {
-            String menuJson = readFromFile(context);
-            if (!TextUtils.isEmpty(menuJson))
-                menuList = jsonToMenuInfo(menuJson);
+            String menuJson = FileUtil.readFromFile(new File(context.getFilesDir(), Constant.FILE_MENU));
+            if (!TextUtils.isEmpty(menuJson)) {
+                menuList = MenuList.parseFormJson(null, menuJson);
+                if (menuList != null)
+                    menuList.isCache = true;
+            }
         } catch (Exception ignore) {
         }
         if (menuList == null) {
@@ -50,115 +38,89 @@ public class MenuUtil {
         return menuList;
     }
 
-    private static MenuList jsonToMenuInfo(String menuJson) throws JSONException {
-        JSONObject jsonObject = new JSONObject(menuJson);
-        int version = jsonObject.optInt("version");
-        String defaultHelp = jsonObject.optString("defaultHelp");
-        JSONArray game = jsonObject.optJSONArray("game");
-        if (game != null) {
-            Map<String, GameInfo> menu = new LinkedHashMap<>();
-            for (int i = 0; i < game.length(); i++) {
-                JSONObject g = game.getJSONObject(i);
-                String name = g.optString("name");
-                String appId = g.optString("appId");
-                String bundleId = g.optString("bundleId");
-                String pkg = g.optString("pkg");
-                String cls = g.optString("cls");
-                String help = g.optString("help");
-                String py = g.optString("py", "");
-                String icon = g.optString("icon", "");
-                GameInfo gameInfo = new GameInfo(name, appId, bundleId, defaultHelp, icon, py);
-                if (!TextUtils.isEmpty(pkg)) {
-                    gameInfo.pkg = pkg;
-                }
-                if (!TextUtils.isEmpty(cls)) {
-                    gameInfo.cls = cls;
-                }
-                if (!TextUtils.isEmpty(help)) {
-                    gameInfo.help = help;
-                }
-                menu.put(gameInfo.name, gameInfo);
-            }
-            MenuList menuList;
-            menuList = new MenuList();
-            menuList.version = version;
-            menuList.defaultHelp = defaultHelp;
-            menuList.menu = menu;
-            return menuList;
-        }
-        return null;
-    }
-
-    private static String getAssetsJson(Context context) {
-        ByteArrayOutputStream bao = new ByteArrayOutputStream();
+    public static Version getVersion(Context context) {
+        Version version = null;
         try {
-            AssetManager assetManager = context.getAssets();
-            InputStream inputStream = assetManager.open("gameList.json");
-            BufferedInputStream bufferedInputStream = new BufferedInputStream(inputStream);
-            byte[] buffer = new byte[1024];
-            int len;
-            while ((len = bufferedInputStream.read(buffer)) != -1) {
-                bao.write(buffer, 0, len);
+            String json = FileUtil.readFromFile(new File(context.getFilesDir(), Constant.FILE_VERSION));
+            if (!TextUtils.isEmpty(json)) {
+                version = Version.parseFormJson(null, json);
+                if (version != null)
+                    version.isCache = true;
             }
-        } catch (IOException ignore) {
-        } finally {
-            try {
-                bao.close();
-            } catch (IOException ignore) {
-            }
+        } catch (Exception ignore) {
         }
-        return bao.toString();
+        return version;
     }
 
-    public static class MenuTask extends AsyncTask<Object, Void, MenuList> {
+    public static NetGetTask<Version> getVersion(NetCallBack<Version> callback) {
+        return new NetGetTask<>(Constant.API_VERSION, callback);
+    }
 
-        private MenuTaskCallback callback;
+    public static NetGetTask<MenuList> getMenuTask(NetCallBack<MenuList> callback) {
+        return new NetGetTask<>(Constant.API_MENU, callback);
+    }
 
-        public MenuTask(MenuTaskCallback callback) {
+    @SuppressWarnings("all")
+    public static class NetGetTask<T> extends AsyncTask<Object, Void, T> {
+
+        private final String url;
+        private Class<T> type;
+        private NetCallBack<T> callback;
+
+        public NetGetTask(String url, NetCallBack<T> callback) {
+            this.url = url;
             this.callback = callback;
+            this.type = (Class<T>) ((ParameterizedType) callback.getClass()
+                    .getGenericSuperclass()).getActualTypeArguments()[0];
         }
 
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
             if (callback != null) {
-                callback.onMenuTaskPreExecute();
+                callback.onPreExecute();
             }
         }
 
         @Override
-        protected MenuList doInBackground(Object... contexts) {
-            Context context = (Context) contexts[0];
-            int version = (int) contexts[1];
-            MenuList menuList;
-            String json = HttpClientUtil.doGet("https://gitee.com/willhz/GameWxQRlogin/raw/main/games/gameList-min.json");
-            try {
-                menuList = jsonToMenuInfo(json);
-                if (menuList != null) {
-                    saveToFile(context, json);
+        protected T doInBackground(Object... objects) {
+            String content = HttpClientUtil.doGet(url);
+            if (!TextUtils.isEmpty(content)) {
+                try {
+                    T t = null;
+                    if (JsonParse.class.isAssignableFrom(type)) {
+                        t = type.newInstance();
+                        ((JsonParse<?>) t).parse(content);
+                    } else if (String.class.isAssignableFrom(type)) {
+                        t = (T) content;
+                    }
+                    if (callback != null) {
+                        return callback.onNetResult(content, t);
+                    }
+                    return t;
+                } catch (Exception e) {
                 }
-                return menuList;
-            } catch (Exception ignore) {
             }
-            menuList = new MenuList();
-            menuList.menu = DEFAULT_GAMES;
-            return menuList;
+            if (callback != null) {
+                return callback.onNetResult(null, null);
+            }
+            return null;
         }
 
         @Override
-        protected void onPostExecute(MenuList menuList) {
-            super.onPostExecute(menuList);
+        protected void onPostExecute(T t) {
+            super.onPostExecute(t);
             if (callback != null) {
-                callback.onMenuTaskExecuted(menuList);
+                callback.onExecuted(t);
             }
             clear();
         }
 
         @Override
-        protected void onCancelled() {
-            super.onCancelled();
+        protected void onCancelled(T t) {
+            super.onCancelled(t);
             if (callback != null) {
-                callback.onMenuTaskCancelled();
+                callback.onCancelled(t);
             }
             clear();
         }
@@ -169,66 +131,24 @@ public class MenuUtil {
 
     }
 
-    public interface MenuTaskCallback {
-        void onMenuTaskPreExecute();
+    public abstract static class NetCallBack<T> {
 
-        void onMenuTaskCancelled();
+        public void onPreExecute() {
 
-        void onMenuTaskExecuted(MenuList menuList);
-    }
-
-    private static boolean saveToFile(Context context, String json) {
-        BufferedWriter out = null;
-        File file = new File(context.getFilesDir(), "menu.json");
-        try {
-            if (file.exists()) {
-                file.delete();
-            }
-            out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file, true)));
-            out.write(json);
-            out.flush();
-            return true;
-        } catch (Exception ignore) {
-            if (file.exists()) {
-                file.delete();
-            }
-        } finally {
-            if (out != null) {
-                try {
-                    out.close();
-                } catch (IOException ignore) {
-                }
-            }
         }
-        return false;
-    }
 
-    private static String readFromFile(Context context) {
-        File file = new File(context.getFilesDir(), "menu.json");
-        if (!file.exists())
-            return null;
-        BufferedReader reader = null;
-        FileInputStream fis;
-        try {
-            StringBuilder sbd = new StringBuilder();
-            fis = new FileInputStream(file);
-            reader = new BufferedReader(new InputStreamReader(fis));
-            String row;
-            while ((row = reader.readLine()) != null) {
-                sbd.append(row);
-            }
-            return sbd.toString();
-        } catch (Exception ignore) {
-        } finally {
-            if (reader != null) {
-                try {
-                    reader.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
+        public void onCancelled(T t) {
+
         }
-        return null;
+
+        public T onNetResult(String result, T t) {
+            return t;
+        }
+
+        public void onExecuted(T t) {
+
+        }
+
     }
 
 }

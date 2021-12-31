@@ -2,14 +2,17 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="@dimen/menu_width"
     android:layout_height="@dimen/menu_height"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="horizontal">
 
-    <ImageView
+    <com.willh.wz.widget.RoundImageView
         android:id="@+id/iv_icon"
         android:layout_width="30dp"
         android:layout_height="30dp"
         android:layout_gravity="center_vertical"
         android:layout_marginLeft="12dp"
+        app:type="round_rect"
+        app:border_radius="6dp"
         android:src="@drawable/ic_pictures_no" />
 
     <TextView
@@ -19,7 +22,7 @@
         android:layout_marginLeft="6dp"
         android:gravity="center_vertical"
         android:singleLine="true"
-        android:textColor="#444"
+        android:textColor="@color/text_black"
         android:textSize="14sp" />
 
 </LinearLayout>

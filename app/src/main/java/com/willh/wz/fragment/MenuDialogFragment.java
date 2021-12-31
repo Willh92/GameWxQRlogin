@@ -1,6 +1,8 @@
 package com.willh.wz.fragment;
 
 import android.content.DialogInterface;
+import android.graphics.Color;
+import android.graphics.drawable.VectorDrawable;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.InputFilter;
@@ -51,6 +53,11 @@ public class MenuDialogFragment extends BaseDialogFragment implements AdapterVie
             mContentView = inflater.inflate(R.layout.menu_list, container, false);
             mListView = mContentView.findViewById(R.id.list);
             mUpdateView = mContentView.findViewById(R.id.tv_update);
+            VectorDrawable vectorDrawable = (VectorDrawable) mUpdateView.getCompoundDrawables()[0];
+            vectorDrawable.setTint(getResources().getColor(R.color.colorPrimary));
+            int size = DimenUtil.Dp2Px(getActivity(), 18);
+            vectorDrawable.setBounds(0, 0, size, size);
+            mUpdateView.setCompoundDrawables(vectorDrawable, null, null, null);
             mUpdateView.setText(getString(R.string.update_game, mMenuAdapter.getOriginalCount()));
             mUpdateView.setOnClickListener(v -> {
                 if (mListener != null) {

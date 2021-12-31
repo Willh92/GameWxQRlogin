@@ -2,8 +2,8 @@
 
     <!-- Base application theme. -->
     <style name="Theme.Wz" parent="android:ThemeOverlay.Material.ActionBar">
-        <!-- Primary brand color. -->
         <item name="android:colorPrimary">@color/colorPrimary</item>
+        <item name="android:windowBackground">@drawable/start</item>
     </style>
 
     <style name="dialog_transparent">

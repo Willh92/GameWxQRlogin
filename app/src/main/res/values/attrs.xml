@@ -14,4 +14,16 @@
         <attr name="matProg_linearProgress" format="boolean" />
     </declare-styleable>
 
+    <attr name="type">
+        <enum name="circle" value="0" />
+        <enum name="round_rect" value="1" />
+    </attr>
+
+    <declare-styleable name="RoundImageView">
+        <attr name="type" />
+        <attr name="border_radius" format="dimension" />
+        <attr name="border_width" format="dimension" />
+        <attr name="border_color" format="color" />
+    </declare-styleable>
+
 </resources>

@@ -129,18 +129,8 @@ public class MsgDialogFragment extends BaseDialogFragment implements View.OnClic
         }
     }
 
-    public MsgDialogFragment setLeftText(int resId) {
-        this.leftText = getString(resId);
-        return this;
-    }
-
     public MsgDialogFragment setLeftText(CharSequence leftText) {
         this.leftText = leftText;
-        return this;
-    }
-
-    public MsgDialogFragment setRightText(int resId) {
-        this.rightText = getString(resId);
         return this;
     }
 
@@ -159,18 +149,8 @@ public class MsgDialogFragment extends BaseDialogFragment implements View.OnClic
         return this;
     }
 
-    public MsgDialogFragment setTitleText(int resId) {
-        this.titleText = getString(resId);
-        return this;
-    }
-
     public MsgDialogFragment setTitleText(CharSequence titleText) {
         this.titleText = titleText;
-        return this;
-    }
-
-    public MsgDialogFragment setMsgText(int resId) {
-        this.msgText = getString(resId);
         return this;
     }
 
