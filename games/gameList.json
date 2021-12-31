@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "defaultHelp": "1.打开要登录的游戏，注销当前登录。\n2.登录页如有用户协议等，勾选后游戏切换后台\n3.切换到扫码APP，出现二维码后点击分享给对方\n4.在扫码APP内等待对方扫码授权就可以自动跳转并登录游戏。\n5.如果跳转后没有自动登录，请杀掉游戏进程，重新打开游戏查看。\n6.如果还是没登录，请仔细检查步骤，步骤没错，那就是工具失效了。",
   "game": [
     {
@@ -1063,6 +1063,26 @@
       "icon": "https://mmgame.qpic.cn/image/6421da132ae2beaf15a6863a1a6097623d166583c302c909998fb7cb3448f34e/0"
     },
     {
+      "name": "新笑傲江湖手游",
+      "py": "xxajhsy",
+      "appId": "wxecf9ee8ed7bd9601",
+      "bundleId": "com.tencent.tmgp.xxajh",
+      "pkg": "",
+      "cls": "",
+      "help": "",
+      "icon": "http://file.market.xiaomi.com/thumbnail/PNG/l114/AppStore/0c3075b87e15a4d01852f9a121cae983a26527a90"
+    },
+    {
+      "name": "新笑傲江湖应用宝",
+      "py": "xxajhyyb",
+      "appId": "wx16b9e7bc1bf1cf31",
+      "bundleId": "com.pwrd.xxajh.laohu",
+      "pkg": "",
+      "cls": "",
+      "help": "",
+      "icon": "https://pp.myapp.com/ma_icon/0/icon_52713051_1639536218/256"
+    },
+    {
       "name": "万国觉醒RoK",
       "py": "wgjx",
       "appId": "wxdbd5792b383f23bc",
@@ -1131,6 +1151,16 @@
       "cls": "",
       "help": "",
       "icon": "https://mmocgame.qpic.cn/wechatgame/duc2TvpEgSTHKkRGhASC2YXUkCYOc1vl7bk1X2MxVgGNLbNc2PN7bEQZQUrt8xEY/0"
+    },
+    {
+      "name": "乌冬的旅店",
+      "py": "wddld",
+      "appId": "wxf46a6de67e7645be",
+      "bundleId": "inland.hotel.twgame",
+      "pkg": "",
+      "cls": "",
+      "help": "",
+      "icon": "https://gimg0.baidu.com/gimg/src=https%3A%2F%2Fgameplus-platform.cdn.bcebos.com%2Fgameplus-platform%2Fupload%2Ffile%2Fsource%2Ff27dda0594797e9f71d07889a568cf41.jpeg&app=2000&size=f260,260&n=0&g=0n&q=85&fmt=jpeg?sec=0&t=8039b36f91ea12f128bf63b59b55df2f"
     },
     {
       "name": "三生三世十里桃花",
