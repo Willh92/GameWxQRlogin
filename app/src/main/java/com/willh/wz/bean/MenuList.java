@@ -13,7 +13,6 @@ public class MenuList implements JsonParse<MenuList> {
     public final static int DEFAULT_VERSION = 1;
 
     public int version = DEFAULT_VERSION;
-    public String defaultHelp;
     public Map<String, GameInfo> menu;
 
     public boolean isCache = false;
@@ -32,7 +31,7 @@ public class MenuList implements JsonParse<MenuList> {
         try {
             JSONObject jsonObject = new JSONObject(menuJson);
             int version = jsonObject.optInt("version");
-            String defaultHelp = jsonObject.optString("defaultHelp");
+            JSONArray helpList = jsonObject.optJSONArray("helpList");
             JSONArray game = jsonObject.optJSONArray("game");
             if (game != null) {
                 Map<String, GameInfo> menu = new LinkedHashMap<>();
@@ -46,6 +45,9 @@ public class MenuList implements JsonParse<MenuList> {
                     String help = g.optString("help");
                     String py = g.optString("py", "");
                     String icon = g.optString("icon", "");
+                    String defaultHelp = "";
+                    if (helpList != null)
+                        defaultHelp = helpList.optString(g.optInt("helpIndex", 0), "");
                     GameInfo gameInfo = new GameInfo(name, appId, bundleId, defaultHelp, icon, py);
                     if (!TextUtils.isEmpty(pkg)) {
                         gameInfo.pkg = pkg;
@@ -61,7 +63,6 @@ public class MenuList implements JsonParse<MenuList> {
                 if (menuList == null)
                     menuList = new MenuList();
                 menuList.version = version;
-                menuList.defaultHelp = defaultHelp;
                 menuList.menu = menu;
                 return menuList;
             }

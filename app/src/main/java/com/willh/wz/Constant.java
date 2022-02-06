@@ -21,6 +21,6 @@ public class Constant {
 
     public static final String SERVER = "https://gitee.com/willhz/GameWxQRlogin/raw/main/";
     public static final String API_VERSION = SERVER + "config/v.json";
-    public static final String API_MENU = SERVER + "games/gameList-min.json";
+    public static final String API_MENU = SERVER + "games/gameList2-min.json";
 
 }
