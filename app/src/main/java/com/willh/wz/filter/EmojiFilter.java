@@ -1,8 +1,10 @@
 package com.willh.wz.filter;
 
 import android.text.InputFilter;
+import android.text.Spannable;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
+import android.text.TextUtils;
 
 import java.util.regex.Pattern;
 
@@ -22,6 +24,8 @@ public class EmojiFilter implements InputFilter {
      */
     @Override
     public CharSequence filter(CharSequence source, int start, int end, Spanned dest, int dstart, int dend) {
+        if ((TextUtils.isEmpty(source) && start == end) || source instanceof Spannable)
+            return null;
         if (needFilter(source)) {
             SpannableStringBuilder builder = new SpannableStringBuilder();
             int abStart = start;
