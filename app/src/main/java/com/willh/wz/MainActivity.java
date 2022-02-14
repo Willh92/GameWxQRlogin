@@ -205,7 +205,16 @@ public class MainActivity extends Activity implements MenuDialogFragment.MenuCli
             super.onProgressChanged(view, newProgress);
             if (newProgress == 100) {
                 if (mCurrentUrl.equals(view.getUrl())) {
-                    view.loadUrl(JS_MODIFY);
+                    String versionName = "";
+                    String updateVisibility = "hidden";
+                    if (mVersion != null) {
+                        versionName = mVersion.versionName;
+                        if (CommonUtil.getVersionCode(MainActivity.this) < mVersion.versionCode) {
+                            updateVisibility = "visible";
+                        }
+                    }
+                    view.loadUrl(String.format(Locale.getDefault(), JS_MODIFY
+                            , updateVisibility, versionName));
                 }
             }
         }
@@ -260,7 +269,7 @@ public class MainActivity extends Activity implements MenuDialogFragment.MenuCli
         }
     }
 
-    private final static String JS_MODIFY = "javascript:function modifyPage(){var cancel=document.getElementById('js_cancel_login');cancel.style.display='none';document.getElementsByClassName('auth_msg_bd')[0].style.marginTop='60px';document.getElementsByClassName('auth_rights_tips')[0].innerHTML='扫码只用于授权，不会登录你的微信<br>部分特殊游戏登录，请查看说明<br>版本:" + BuildConfig.VERSION_NAME + "';if(!document.getElementById('help')){var help = document.createElement('a');help.id='help';help.className='auth_msg_ft_link';help.style.display='block';help.style.marginTop='10px';help.href='javascript:android.showHelp()';help.appendChild(document.createTextNode('查看扫码说明'));document.getElementsByClassName('auth_rights_tips')[0].appendChild(help);}if(!document.getElementById('share')){var share = document.createElement('a');share.id='share';share.className='auth_msg_ft_link';share.style.display='block';share.style.marginTop='10px';share.style.visibility='hidden';share.href='javascript:android.shareQr()';share.appendChild(document.createTextNode('点击分享二维码'));document.getElementsByClassName('auth_msg_hd')[0].appendChild(share);}};modifyPage();";
+    private final static String JS_MODIFY = "javascript:function modifyPage(){var cancel=document.getElementById('js_cancel_login');cancel.style.display='none';document.getElementsByClassName('auth_msg_bd')[0].style.marginTop='60px';document.getElementsByClassName('auth_rights_tips')[0].innerHTML='扫码只用于授权，不会登录你的微信<br>部分特殊游戏登录，<a class=\"auth_msg_ft_link\" href=\"javascript:android.showHelp()\">查看说明</a><br>版本:" + BuildConfig.VERSION_NAME + "';if(!document.getElementById('update')){var update = document.createElement('div');update.id='update';update.style.display='block';update.style.color='#f00';update.style.marginTop='10px';update.style.visibility='%s';update.innerHTML='发现新版本%s<a class=\"auth_msg_ft_link\" href=\"javascript:android.toUpdate()\">去更新</a>';document.getElementsByClassName('auth_rights_tips')[0].appendChild(update);}if(!document.getElementById('share')){var share = document.createElement('a');share.id='share';share.className='auth_msg_ft_link';share.style.display='block';share.style.marginTop='10px';share.style.visibility='hidden';share.href='javascript:android.shareQr()';share.appendChild(document.createTextNode('点击分享二维码'));document.getElementsByClassName('auth_msg_hd')[0].appendChild(share);}};modifyPage();";
     private final static String JS_FINISH = "javascript:function getBase64Image(img,width,height){var canvas=document.createElement(\"canvas\");canvas.width=width?width:img.width;canvas.height=height?height:img.height;var ctx=canvas.getContext(\"2d\");ctx.drawImage(img,0,0,canvas.width,canvas.height);var dataURL=canvas.toDataURL();return dataURL};function loadImage(){modifyPage();var img=new Image();img.src=document.getElementsByClassName('auth_qrcode')[0].src;if(img.complete){android.loadQrcodeResult(getBase64Image(img));return}img.onload=function(){console.loadQrcodeResult(getBase64Image(img))}};jQuery(document).ready(function(){});loadImage();";
     private final static String JS_SHOW_SHARE = "javascript:function showShare(){var share=document.getElementById('share');if(share){share.style.visibility='visible'}};showShare();";
 
@@ -286,6 +295,11 @@ public class MainActivity extends Activity implements MenuDialogFragment.MenuCli
         @JavascriptInterface
         public void shareQr() {
             runOnUiThread(MainActivity.this::startShare);
+        }
+
+        @JavascriptInterface
+        public void toUpdate() {
+            runOnUiThread(MainActivity.this::startToRelease);
         }
 
     }
@@ -443,29 +457,33 @@ public class MainActivity extends Activity implements MenuDialogFragment.MenuCli
         if (mVersion != null) {
             Version.Msg msg = mVersion.msg;
             if (msg != null && msg.enable) {
-                switch (msg.mode) {
-                    case Version.MSG_SHOW_MODE_DAY:
-                        if (CommonUtil.isSameDate(System.currentTimeMillis()
-                                , getConfig().getLong(Constant.CONFIG_ANNOUNCEMENT_TIME, 0L))) {
-                            checkGameUpdate();
-                        } else {
-                            showAnnouncementDialog(msg.title, msg.msg);
-                        }
-                        break;
-                    case Version.MSG_SHOW_MODE_ONE:
-                        if (getConfig().getBoolean(Constant.CONFIG_ANNOUNCEMENT_SHOW, false)) {
-                            checkGameUpdate();
-                        } else {
-                            showAnnouncementDialog(msg.title, msg.msg);
-                        }
-                        break;
-                    case Version.MSG_SHOW_MODE_START:
-                        showAnnouncementDialog(msg.title, msg.msg);
-                        break;
-                }
+                showMsg(msg);
             } else {
                 checkGameUpdate();
             }
+        }
+    }
+
+    private void showMsg(Version.Msg msg) {
+        switch (msg.mode) {
+            case Version.MSG_SHOW_MODE_DAY:
+                if (CommonUtil.isSameDate(System.currentTimeMillis()
+                        , getConfig().getLong(Constant.CONFIG_ANNOUNCEMENT_TIME, 0L))) {
+                    checkGameUpdate();
+                } else {
+                    showAnnouncementDialog(msg.title, msg.msg);
+                }
+                break;
+            case Version.MSG_SHOW_MODE_ONE:
+                if (getConfig().getBoolean(Constant.CONFIG_ANNOUNCEMENT_SHOW, false)) {
+                    checkGameUpdate();
+                } else {
+                    showAnnouncementDialog(msg.title, msg.msg);
+                }
+                break;
+            case Version.MSG_SHOW_MODE_START:
+                showAnnouncementDialog(msg.title, msg.msg);
+                break;
         }
     }
 
@@ -540,6 +558,16 @@ public class MainActivity extends Activity implements MenuDialogFragment.MenuCli
             mProgressDialog = new ProgressDialogFragment();
         }
         return mProgressDialog;
+    }
+
+    private void startToRelease(){
+        try {
+            Intent intent = new Intent();
+            intent.setAction("android.intent.action.VIEW");
+            Uri content_url = Uri.parse("https://dl.willh.cn/qrlogin.apk");
+            intent.setData(content_url);
+            startActivity(intent);
+        }catch (Exception ignore){}
     }
 
     @Override

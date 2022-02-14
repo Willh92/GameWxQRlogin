@@ -40,7 +40,7 @@ public class Version implements JsonParse<Version> {
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("version", version.version);
             jsonObject.put("versionCode", version.versionCode);
-            jsonObject.put("versionCode", version.versionCode);
+            jsonObject.put("versionName", version.versionName);
             jsonObject.put("menuVersion", version.menuVersion);
 
             JSONObject msgJson = new JSONObject();
@@ -64,7 +64,7 @@ public class Version implements JsonParse<Version> {
                 version = new Version();
             version.version = jsonObject.optInt("versionCode", 0);
             version.versionCode = jsonObject.optInt("versionCode", BuildConfig.VERSION_CODE);
-            version.versionName = jsonObject.optString("versionCode", BuildConfig.VERSION_NAME);
+            version.versionName = jsonObject.optString("versionName", BuildConfig.VERSION_NAME);
             version.menuVersion = jsonObject.optInt("menuVersion", MenuList.DEFAULT_VERSION);
             JSONObject msgJson = jsonObject.optJSONObject("msg");
             if (msgJson != null) {
