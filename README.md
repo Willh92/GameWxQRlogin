@@ -30,6 +30,6 @@
 
 <br>
 <div style="float: left">
-<img src="/screenshot/Screenshot1.jpeg?raw=true" width="300">
-<img src="/screenshot/Screenshot2.jpeg?raw=true" width="300">
+<img src="/screenshot/Screenshot1.jpg?raw=true" width="300">
+<img src="/screenshot/Screenshot2.jpg?raw=true" width="300">
 </div>
