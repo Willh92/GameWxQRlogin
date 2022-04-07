@@ -1196,6 +1196,17 @@
       "help": "",
       "helpIndex": 1,
       "icon": "https://file.market.xiaomi.com/thumbnail/PNG/l114/AppStore/013cf54dc160790bc23acd03e535af996ea43919a"
+    },
+    {
+      "name": "腾讯手游加速器",
+      "py": "txsyjsq",
+      "appId": "wxe2d8d8857142229a",
+      "bundleId": "com.tencent.cmocmna",
+      "pkg": "",
+      "cls": "",
+      "help": "",
+      "helpIndex": 1,
+      "icon": "https://file.market.xiaomi.com/thumbnail/PNG/l114/AppStore/034454e79e287eba949d9e01d52b88f665c42fbc6"
     }
   ]
 }
