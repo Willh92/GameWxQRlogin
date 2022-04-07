@@ -9,8 +9,8 @@ android {
         applicationId "com.willh.wz"
         minSdk 21
         targetSdk 31
-        versionCode 12
-        versionName "1.4.2"
+        versionCode 13
+        versionName "1.4.3"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
