@@ -1,5 +1,5 @@
 {
-  "version": 8,
+  "version": 9,
   "helpList": [
     "1.打开要登录的应用，注销当前登录。\n2.登录页如有用户协议等，勾选后游戏切换后台\n3.切换到扫码APP，出现二维码后点击分享给对方\n4.在扫码APP内等待对方扫码授权就可以自动跳转并登录应用。\n5.如果跳转后没有自动登录，请杀掉游戏进程，重新打开应用查看。\n6.如果还是没登录，请仔细检查步骤，步骤没错，那就是工具失效了。",
     "1.打开应用，注销当前登录，勾选协议后点击微信登录\n2.跳转到微信后，打开或切换到扫码APP，出现二维码后点击分享给对方。\n3.在扫码APP内等待对方扫码授权，成功授权后会自动跳转。"
@@ -1218,6 +1218,17 @@
       "help": "",
       "helpIndex": 1,
       "icon": "https://pp.myapp.com/ma_icon/0/icon_52475061_1635301200/256"
+    },
+    {
+      "name": "快手",
+      "py": "ks",
+      "appId": "wxaadbab9d13edff20",
+      "bundleId": "com.smile.gifmaker",
+      "pkg": "",
+      "cls": "",
+      "help": "",
+      "helpIndex": 1,
+      "icon": "https://file.market.xiaomi.com/thumbnail/PNG/l114/AppStore/034c63427698c40751d7be7aaaa7613cd4866f68b"
     }
   ]
 }
