@@ -8,6 +8,12 @@
         android:title="刷新" />
 
     <item
+        android:id="@+id/identity"
+        android:icon="@drawable/ic_identity"
+        android:showAsAction="always"
+        android:title="认证" />
+
+    <item
         android:id="@+id/more"
         android:icon="@drawable/ic_more"
         android:showAsAction="always"

@@ -52,6 +52,7 @@ public class MainActivity extends Activity implements MenuDialogFragment.MenuCli
     private MenuAdapter mMenuAdapter;
     private WebView mWebView;
     private Bitmap mQrBitmap;
+    private Bitmap mIdentityBitmap;
 
     private SharedPreferences mConfig;
     private GameInfo mCurrentGame;
@@ -125,6 +126,10 @@ public class MainActivity extends Activity implements MenuDialogFragment.MenuCli
             mQrBitmap.recycle();
             mQrBitmap = null;
         }
+        if (mIdentityBitmap != null) {
+            mIdentityBitmap.recycle();
+            mIdentityBitmap = null;
+        }
         if (mVersionTask != null) {
             mVersionTask.cancel(false);
         }
@@ -161,6 +166,8 @@ public class MainActivity extends Activity implements MenuDialogFragment.MenuCli
             return true;
         } else if (item.getItemId() == R.id.more) {
             showGameMenu();
+        } else if (item.getItemId() == R.id.identity) {
+            showIdentityDialog();
         } else {
             GameInfo gameInfo = mMenuList.menu.get(item.getTitle().toString());
             if (gameInfo != null)
@@ -173,6 +180,21 @@ public class MainActivity extends Activity implements MenuDialogFragment.MenuCli
         try {
             if (mQrBitmap != null && !mQrBitmap.isRecycled()) {
                 File img = ImageUtils.saveQrBitmapFile(this, mQrBitmap, "qr.jpg");
+                if (img != null)
+                    shareOneFile(img.getAbsolutePath());
+            }
+        } catch (Exception ignore) {
+            Toast.makeText(this, "分享二维码失败", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void startShareIdentity() {
+        try {
+            if (mIdentityBitmap == null || mIdentityBitmap.isRecycled()) {
+                mIdentityBitmap = BitmapFactory.decodeStream(getAssets().open("identity_qr.png"));
+            }
+            if (mIdentityBitmap != null && !mIdentityBitmap.isRecycled()) {
+                File img = ImageUtils.saveQrBitmapFile(this, mIdentityBitmap, "identity.jpg");
                 if (img != null)
                     shareOneFile(img.getAbsolutePath());
             }
@@ -536,6 +558,23 @@ public class MainActivity extends Activity implements MenuDialogFragment.MenuCli
         mHelpDialog.setTitleText(title).setMsgText(msg).show(getFragmentManager(), "MsgDialog");
     }
 
+    private MsgDialogFragment mIdentityDialog;
+
+    private void showIdentityDialog() {
+        if (mIdentityDialog == null) {
+            mIdentityDialog = new MsgDialogFragment()
+                    .setTitleText(getString(R.string.identity_title))
+                    .setMsgText(getString(R.string.identity_share_qr_info))
+                    .setRightText(getString(R.string.identity_share_qr))
+                    .setLeftGone(true)
+                    .setRightButtonClickListener(msgDialogFragment -> {
+                        startShareIdentity();
+                        msgDialogFragment.dismissAllowingStateLoss();
+                    });
+        }
+        mIdentityDialog.show(getFragmentManager(), "IdentityDialog");
+    }
+
     private ProgressDialogFragment mProgressDialog;
 
     public void showProgressDialog() {
@@ -560,14 +599,15 @@ public class MainActivity extends Activity implements MenuDialogFragment.MenuCli
         return mProgressDialog;
     }
 
-    private void startToRelease(){
+    private void startToRelease() {
         try {
             Intent intent = new Intent();
             intent.setAction("android.intent.action.VIEW");
             Uri content_url = Uri.parse("https://dl.willh.cn/qrlogin.apk");
             intent.setData(content_url);
             startActivity(intent);
-        }catch (Exception ignore){}
+        } catch (Exception ignore) {
+        }
     }
 
     @Override

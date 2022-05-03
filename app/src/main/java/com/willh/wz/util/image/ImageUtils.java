@@ -157,13 +157,15 @@ public class ImageUtils {
     }
 
     public static File saveQrBitmapFile(Context context, Bitmap bitmap, String fileName) {
-        File dir;
+        return saveBitmapFile(bitmap, new File(getSaveDir(context), fileName));
+    }
+
+    public static File getSaveDir(Context context) {
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            dir = context.getCacheDir();
+            return context.getCacheDir();
         } else {
-            dir = getGalleryPath();
+            return getGalleryPath();
         }
-        return saveBitmapFile(bitmap, new File(dir, fileName));
     }
 
     public static File saveBitmapFile(Bitmap bitmap, File save) {

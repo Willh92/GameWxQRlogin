@@ -7,5 +7,8 @@
     <string name="update_game">更新列表(%d)</string>
     <string name="search_name">搜索游戏</string>
     <string name="update">更新</string>
+    <string name="identity_share_qr">分享二维码</string>
+    <string name="identity_share_qr_info">扫码登录过程中，出现人脸验证情况，点击“分享二维码”给号主，让号主使用微信识别或扫描二维码后，手动进行人脸验证。验证完成后，刷新生成新二维码进行识别登录。</string>
+    <string name="identity_title">解除登录人脸限制</string>
     <string name="update_tips">检测到游戏列表有更新，是否立即更新？</string>
 </resources>
