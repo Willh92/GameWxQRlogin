@@ -6,4 +6,5 @@
     <color name="devide_color">#ffe3e1e1</color>
     <color name="transparent">#00000000</color>
     <color name="grey">#ddd</color>
+    <color name="white">#fff</color>
 </resources>

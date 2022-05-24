@@ -5,6 +5,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -150,9 +151,12 @@ public class MainActivity extends Activity implements MenuDialogFragment.MenuCli
         }
     }
 
+    private MenuItem mRefreshItem;
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main, menu);
+        mRefreshItem = menu.findItem(R.id.refresh);
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -166,12 +170,16 @@ public class MainActivity extends Activity implements MenuDialogFragment.MenuCli
             return true;
         } else if (item.getItemId() == R.id.more) {
             showGameMenu();
+            return true;
         } else if (item.getItemId() == R.id.identity) {
             showIdentityDialog();
+            return true;
         } else {
             GameInfo gameInfo = mMenuList.menu.get(item.getTitle().toString());
-            if (gameInfo != null)
+            if (gameInfo != null) {
                 selectGame(gameInfo);
+                return true;
+            }
         }
         return super.onOptionsItemSelected(item);
     }
@@ -291,7 +299,7 @@ public class MainActivity extends Activity implements MenuDialogFragment.MenuCli
         }
     }
 
-    private final static String JS_MODIFY = "javascript:function modifyPage(){var cancel=document.getElementById('js_cancel_login');cancel.style.display='none';document.getElementsByClassName('auth_msg_bd')[0].style.marginTop='60px';document.getElementsByClassName('auth_rights_tips')[0].innerHTML='扫码只用于授权，不会登录你的微信<br>部分特殊游戏登录，<a class=\"auth_msg_ft_link\" href=\"javascript:android.showHelp()\">查看说明</a><br>仅支持摄像头扫码识别<br>版本:" + BuildConfig.VERSION_NAME + "';if(!document.getElementById('update')){var update = document.createElement('div');update.id='update';update.style.display='block';update.style.color='#f00';update.style.marginTop='10px';update.style.visibility='%s';update.innerHTML='发现新版本%s<a class=\"auth_msg_ft_link\" href=\"javascript:android.toUpdate()\">去更新</a>';document.getElementsByClassName('auth_rights_tips')[0].appendChild(update);}if(!document.getElementById('share')){var share = document.createElement('a');share.id='share';share.className='auth_msg_ft_link';share.style.display='block';share.style.marginTop='10px';share.style.visibility='hidden';share.href='javascript:android.shareQr()';share.appendChild(document.createTextNode('点击分享二维码'));document.getElementsByClassName('auth_msg_hd')[0].appendChild(share);}};modifyPage();";
+    private final static String JS_MODIFY = "javascript:function modifyPage(){var cancel=document.getElementById('js_cancel_login');cancel.style.display='none';document.getElementsByClassName('auth_msg_bd')[0].style.marginTop='60px';document.getElementsByClassName('auth_rights_tips')[0].innerHTML='扫码只用于授权，不会登录你的微信<br>部分特殊游戏登录，<a class=\"auth_msg_ft_link\" href=\"javascript:android.showHelp()\">查看说明</a><br>仅支持摄像头扫码识别<br>版本:" + BuildConfig.VERSION_NAME + "<br><a class=\"auth_msg_ft_link\" href=\"javascript:android.feedback()\">问题反馈</a>';if(!document.getElementById('update')){var update = document.createElement('div');update.id='update';update.style.display='block';update.style.color='#f00';update.style.marginTop='10px';update.style.visibility='%s';update.innerHTML='发现新版本%s<a class=\"auth_msg_ft_link\" href=\"javascript:android.toUpdate()\">去更新</a>';document.getElementsByClassName('auth_rights_tips')[0].appendChild(update);}if(!document.getElementById('share')){var share = document.createElement('a');share.id='share';share.className='auth_msg_ft_link';share.style.display='block';share.style.marginTop='10px';share.style.visibility='hidden';share.href='javascript:android.shareQr()';share.appendChild(document.createTextNode('点击分享二维码'));document.getElementsByClassName('auth_msg_hd')[0].appendChild(share);}};modifyPage();";
     private final static String JS_FINISH = "javascript:function getBase64Image(img,width,height){var canvas=document.createElement('canvas');let w=width?width:img.width;let h=height?height:img.height;canvas.width=w*1.1;canvas.height=h*1.1;var ctx=canvas.getContext('2d');ctx.fillStyle='#f3f3f3';ctx.fillRect(0,0,canvas.width,canvas.height);let padding=(canvas.width-w)/2;ctx.drawImage(img,padding,0,w,h);let fontSize=canvas.width/13;ctx.font=fontSize+'px Arial';ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillStyle='#f00';ctx.fillText('仅支持摄像头扫码识别',canvas.width/2,h*1.05);var dataURL=canvas.toDataURL();return dataURL};function loadImage(){modifyPage();var img=new Image();img.src=document.getElementsByClassName('auth_qrcode')[0].src;if(img.complete){android.loadQrcodeResult(getBase64Image(img));return}img.onload=function(){console.loadQrcodeResult(getBase64Image(img))}};jQuery(document).ready(function(){});loadImage();";
     private final static String JS_SHOW_SHARE = "javascript:function showShare(){var share=document.getElementById('share');if(share){share.style.visibility='visible'}};showShare();";
 
@@ -322,6 +330,11 @@ public class MainActivity extends Activity implements MenuDialogFragment.MenuCli
         @JavascriptInterface
         public void toUpdate() {
             runOnUiThread(MainActivity.this::startToRelease);
+        }
+
+        @JavascriptInterface
+        public void feedback() {
+            runOnUiThread(MainActivity.this::feedback);
         }
 
     }
@@ -384,7 +397,12 @@ public class MainActivity extends Activity implements MenuDialogFragment.MenuCli
             mMenuAdapter = new MenuAdapter(this, new ArrayList<>(mMenuList.menu.values()));
             mMenuDialog = MenuDialogFragment.getInstance(mMenuAdapter, this);
         }
-        mMenuDialog.showAllowingStateLoss(getFragmentManager(), "MenuDialog");
+        mMenuDialog.setOnDismissListener(dialog -> {
+            if (mRefreshItem != null) {
+                mRefreshItem.getIcon().setTint(getResources().getColor(R.color.white));
+                mRefreshItem.getIcon().invalidateSelf();
+            }
+        }).showAllowingStateLoss(getFragmentManager(), "MenuDialog");
     }
 
     private void getVersion() {
@@ -443,7 +461,7 @@ public class MainActivity extends Activity implements MenuDialogFragment.MenuCli
 
             @Override
             public MenuList onNetResult(String result, MenuList menuList) {
-                if (menuList == null) {
+                if (menuList == null || menuList.menu == null) {
                     menuList = MenuUtil.getMenu(MainActivity.this);
                 } else {
                     boolean save = FileUtil.saveToFile(new File(MainActivity.this.getFilesDir(), Constant.FILE_MENU), result);
@@ -544,7 +562,7 @@ public class MainActivity extends Activity implements MenuDialogFragment.MenuCli
                         msgDialogFragment.dismissAllowingStateLoss();
                     });
         }
-        mUpdateDialog.show(getFragmentManager(), "UpdateDialog");
+        mUpdateDialog.showAllowingStateLoss(getFragmentManager(), "UpdateDialog");
     }
 
     private MsgDialogFragment mHelpDialog;
@@ -555,7 +573,7 @@ public class MainActivity extends Activity implements MenuDialogFragment.MenuCli
             mHelpDialog.setLeftGone(true)
                     .setRightText(getString(R.string.help_known));
         }
-        mHelpDialog.setTitleText(title).setMsgText(msg).show(getFragmentManager(), "MsgDialog");
+        mHelpDialog.setTitleText(title).setMsgText(msg).showAllowingStateLoss(getFragmentManager(), "MsgDialog");
     }
 
     private MsgDialogFragment mIdentityDialog;
@@ -572,7 +590,7 @@ public class MainActivity extends Activity implements MenuDialogFragment.MenuCli
                         msgDialogFragment.dismissAllowingStateLoss();
                     });
         }
-        mIdentityDialog.show(getFragmentManager(), "IdentityDialog");
+        mIdentityDialog.showAllowingStateLoss(getFragmentManager(), "IdentityDialog");
     }
 
     private ProgressDialogFragment mProgressDialog;
@@ -604,6 +622,17 @@ public class MainActivity extends Activity implements MenuDialogFragment.MenuCli
             Intent intent = new Intent();
             intent.setAction("android.intent.action.VIEW");
             Uri content_url = Uri.parse("https://dl.willh.cn/qrlogin.apk");
+            intent.setData(content_url);
+            startActivity(intent);
+        } catch (Exception ignore) {
+        }
+    }
+
+    private void feedback() {
+        try {
+            Intent intent = new Intent();
+            intent.setAction("android.intent.action.VIEW");
+            Uri content_url = Uri.parse("https://github.com/Willh92/GameWxQRlogin/issues");
             intent.setData(content_url);
             startActivity(intent);
         } catch (Exception ignore) {
